@@ -60,6 +60,7 @@ class Expander:
             scaffold = Chem.MolFromSmarts(scaffold_str)
             actions, _ = self.expansion_policy.get_actions([mol])
             self.solved = dict()
+            self.BBs = []
             self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
@@ -91,7 +92,7 @@ class Expander:
                 json_data = json.dumps(dict(solution), indent=2)
                 print(json_data)
             print('*' * 20)
-            rows.append({'SMILES': smi, 'score': score, 'route': dict(solution)})
+            rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
         df = pd.DataFrame(rows)
         return df
 
@@ -110,9 +111,8 @@ class Expander:
             print(smi)
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            if mol in self.stock:
-                print('in stock!')
             self.solved = dict()
+            self.BBs = []
             self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
@@ -125,7 +125,7 @@ class Expander:
                 print(json_data)
 
             print('*' * 20)
-            rows.append({'SMILES': smi, 'score': score, 'route': dict(solution)})
+            rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
         df = pd.DataFrame(rows)
         return df
 
@@ -169,6 +169,7 @@ class Expander:
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
+                self.BBs.append(mol.smiles)
                 return
             else:
                 rxn, score, clas = tup
@@ -232,8 +233,8 @@ if __name__ == '__main__':
     )
 
     # df = expander.search_tree(
-    #     # smiles[:5]
-    #     ['C(Nc1n[nH]c2cc(-c3ccccc3)ccc12)C1CC1']
+    #     smiles[:5]
+    #     # ['C(Nc1n[nH]c2cc(-c3ccccc3)ccc12)C1CC1']
     #     # 'Cc1cccc(c1N(CC(=O)Nc2ccc(cc2)c3ncon3)C(=O)C4CCS(=O)(=O)CC4)C'
     # )
     print(df.to_csv())
