@@ -1,14 +1,11 @@
 [tool.poetry]
 name = "shallowtree"
 version = "0.1"
-description = "Retrosynthetic route finding using neural network guided Monte-Carlo tree search"
-authors = ["Molecular AI group <samuel.genheden@astrazeneca.com>"]
-license = "MIT"
-include = ["aizynthfinder/data/*.yml", "aizynthfinder/data/templates/*"]
+description = "Retrosynthetic analysis and scoring"
+authors = ["Kostas Papadopoulos <kostasp97@gmail.com>"]
+license = "GPL-3.0"
 readme = "README.md"
-homepage = "https://github.com/MolecularAI/aizynthfinder/"
-repository = "https://github.com/MolecularAI/aizynthfinder/"
-documentation = "https://molecularai.github.io/aizynthfinder/"
+repository = "https://github.com/Arhs99/shallow-tree.git"
 
 [tool.pytest.ini_options]
 mccabe-complexity = 9
@@ -55,11 +52,9 @@ all = ["scipy", "timeout-decorator", "molbloom"]
 tf = ["tensorflow", "grpcio", "tensorflow-serving-api"]
 
 [tool.poetry.scripts]
-aizynthapp = "aizynthfinder.interfaces.aizynthapp:main"
-aizynthcli = "aizynthfinder.interfaces.aizynthcli:main"
-cat_aizynth_output = "aizynthfinder.tools.cat_output:main"
-download_public_data = "aizynthfinder.tools.download_public_data:main"
-smiles2stock = "aizynthfinder.tools.make_stock:main"
+searchcli = "shallowtree.interfaces.searchcli:main"
+download_public_data = "shallowtree.tools.download_public_data:main"
+smiles2stock = "shallowtree.tools.make_stock:main"
 
 [tool.coverage.run]
 relative_files = true
