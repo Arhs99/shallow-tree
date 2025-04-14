@@ -94,7 +94,7 @@ class Expander:
                             self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
                         break
             if score > 0.9:
-                self.reconstruct_tree(mol, 0, solution)
+                self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
             rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
         df = pd.DataFrame(rows)
@@ -119,7 +119,7 @@ class Expander:
             self._cache_counter = 0
             score = self.req_search_tree(mol, depth=0)
             if score > 0.9:
-                self.reconstruct_tree(mol, 0, solution)
+                self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
             rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
         df = pd.DataFrame(rows)
@@ -158,7 +158,7 @@ class Expander:
         self.cache[mol.inchi_key] = (depth, score)
         return score
 
-    def reconstruct_tree(self, mol: Molecule, depth: int, tree: defaultdict):
+    def best_route(self, mol: Molecule, depth: int, tree: defaultdict):
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
@@ -169,5 +169,5 @@ class Expander:
                 reactants = '.'.join([m.smiles for m in rxn])
                 tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
                 for x in rxn:
-                    self.reconstruct_tree(x, depth + 1, tree)
+                    self.best_route(x, depth + 1, tree)
                 return
