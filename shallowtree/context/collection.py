@@ -1,5 +1,3 @@
-""" Module containing a class that is the base class for all collection classes (stock, policies, scorers)
-"""
 from __future__ import annotations
 
 import abc

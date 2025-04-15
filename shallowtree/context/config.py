@@ -1,5 +1,3 @@
-""" Module containing a class for encapsulating the settings of the tree search
-"""
 from __future__ import annotations
 
 import os
@@ -14,42 +12,7 @@ from shallowtree.context.stock import Stock
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import Any, Dict, List, Optional, StrDict, Union
-
-#
-# @dataclass
-# class _PostprocessingConfiguration:
-#     min_routes: int = 5
-#     max_routes: int = 25
-#     all_routes: bool = False
-#     route_distance_model: Optional[str] = None
-#     route_scorers: List[str] = field(default_factory=lambda: [])
-#     scorer_weights: Optional[List[float]] = field(default_factory=lambda: None)
-#
-#
-# @dataclass
-# class _SearchConfiguration:
-#     algorithm: str = "mcts"
-#     algorithm_config: Dict[str, Any] = field(
-#         default_factory=lambda: {
-#             "C": 1.4,
-#             "default_prior": 0.5,
-#             "use_prior": True,
-#             "prune_cycles_in_search": True,
-#             "search_rewards": ["state score"],
-#             "immediate_instantiation": (),
-#             "mcts_grouping": None,
-#             "search_rewards_weights": [],
-#         }
-#     )
-#     max_transforms: int = 6
-#     iteration_limit: int = 100
-#     time_limit: int = 120
-#     return_first: bool = False
-#     exclude_target_from_stock: bool = True
-#     break_bonds: List[List[int]] = field(default_factory=list)
-#     freeze_bonds: List[List[int]] = field(default_factory=list)
-#     break_bonds_operator: str = "and"
+    from shallowtree.utils.type_utils import Any, StrDict
 
 
 @dataclass
@@ -63,7 +26,7 @@ class Configuration:
     expansion_policy: ExpansionPolicy = field(init=False)
     filter_policy: FilterPolicy = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         self.stock = Stock()
         self.expansion_policy = ExpansionPolicy(self)
         self.filter_policy = FilterPolicy(self)
@@ -126,6 +89,3 @@ class Configuration:
             txt = txt.replace(item, os.environ[item[2:-1]])
         _config = yaml.load(txt, Loader=yaml.SafeLoader)
         return Configuration.from_dict(_config)
-
-    def _update_from_config(self, config: StrDict) -> None:
-        return

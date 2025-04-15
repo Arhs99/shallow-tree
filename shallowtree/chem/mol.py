@@ -1,5 +1,3 @@
-""" Module containing classes to deal with Molecules - mostly wrappers around rdkit routines.
-"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -42,10 +40,10 @@ class Molecule:
     """
 
     def __init__(
-        self,
-        rd_mol: Optional[RdMol] = None,
-        smiles: Optional[str] = None,
-        sanitize: bool = False,
+            self,
+            rd_mol: Optional[RdMol] = None,
+            smiles: Optional[str] = None,
+            sanitize: bool = False,
     ) -> None:
         if not rd_mol and not smiles:
             raise MoleculeException(
@@ -153,7 +151,7 @@ class Molecule:
         return self.inchi_key[:14] == other.inchi_key[:14]
 
     def fingerprint(
-        self, radius: int, nbits: int = 2048, chiral: bool = False
+            self, radius: int, nbits: int = 2048, chiral: bool = False
     ) -> np.ndarray:
         """
         Returns the Morgan fingerprint of the molecule
@@ -268,13 +266,13 @@ class TreeMolecule(Molecule):
 
     # pylint: disable=too-many-arguments
     def __init__(
-        self,
-        parent: Optional["TreeMolecule"],
-        transform: Optional[int] = None,
-        rd_mol: Optional[RdMol] = None,
-        smiles: Optional[str] = None,
-        sanitize: bool = False,
-        mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
+            self,
+            parent: Optional["TreeMolecule"],
+            transform: Optional[int] = None,
+            rd_mol: Optional[RdMol] = None,
+            smiles: Optional[str] = None,
+            sanitize: bool = False,
+            mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
     ) -> None:
         super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
         self.parent = parent
@@ -322,7 +320,7 @@ class TreeMolecule(Molecule):
         return self._atom_bonds
 
     def get_bonds_in_molecule(
-        self, query_bonds: Sequence[Sequence[int]]
+            self, query_bonds: Sequence[Sequence[int]]
     ) -> Sequence[Sequence[int]]:
         """
         Get bonds (from a list of bonds) that are present in the molecule.
@@ -373,11 +371,11 @@ class UniqueMolecule(Molecule):
     """
 
     def __init__(
-        self,
-        rd_mol: Optional[RdMol] = None,
-        smiles: Optional[str] = None,
-        sanitize: bool = False,
-    ) -> None:
+            self,
+            rd_mol: Optional[RdMol] = None,
+            smiles: Optional[str] = None,
+            sanitize: bool = False,
+    ):
         super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
 
     def __hash__(self) -> int:

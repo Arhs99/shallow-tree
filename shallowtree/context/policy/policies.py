@@ -1,5 +1,3 @@
-""" Module containing classes that interfaces neural network policies
-"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -41,7 +39,7 @@ class ExpansionPolicy(ContextCollection):
 
     _collection_name = "expansion policy"
 
-    def __init__(self, config: Configuration) -> None:
+    def __init__(self, config: Configuration):
         super().__init__()
         self._config = config
 
@@ -91,7 +89,7 @@ class ExpansionPolicy(ContextCollection):
             )
         self._items[source.key] = source
 
-    def load_from_config(self, **config: Any) -> None:
+    def load_from_config(self, **config: Any):
         """
         Load one or more expansion policy from a configuration
 
@@ -151,11 +149,11 @@ class FilterPolicy(ContextCollection):
 
     _collection_name = "filter policy"
 
-    def __init__(self, config: Configuration) -> None:
+    def __init__(self, config: Configuration):
         super().__init__()
         self._config = config
 
-    def __call__(self, reaction: RetroReaction) -> None:
+    def __call__(self, reaction: RetroReaction):
         return self.apply(reaction)
 
     def apply(self, reaction: RetroReaction) -> None:
@@ -172,7 +170,7 @@ class FilterPolicy(ContextCollection):
         for name in self.selection:
             self[name](reaction)
 
-    def load(self, source: FilterStrategy) -> None:  # type: ignore
+    def load(self, source: FilterStrategy):
         """
         Add a pre-initialized filter strategy object to the policy
 
@@ -184,7 +182,7 @@ class FilterPolicy(ContextCollection):
             )
         self._items[source.key] = source
 
-    def load_from_config(self, **config: Any) -> None:
+    def load_from_config(self, **config: Any):
         """
         Load one or more filter policy from a configuration
 
@@ -223,7 +221,7 @@ class FilterPolicy(ContextCollection):
             obj = cls(key, self._config, **kwargs)
             self.load(obj)
 
-    def reset_cache(self) -> None:
+    def reset_cache(self):
         """Reset filtering cache."""
         if not self.selection:
             return

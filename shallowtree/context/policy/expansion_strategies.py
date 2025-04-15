@@ -49,7 +49,7 @@ class ExpansionStrategy(abc.ABC):
 
     _required_kwargs: List[str] = []
 
-    def __init__(self, key: str, config: Configuration, **kwargs: str) -> None:
+    def __init__(self, key: str, config: Configuration, **kwargs: str):
         if any(name not in kwargs for name in self._required_kwargs):
             raise PolicyException(
                 f"A {self.__class__.__name__} class needs to be initiated "
@@ -114,7 +114,7 @@ class MultiExpansionStrategy(ExpansionStrategy):
         key: str,
         config: Configuration,
         **kwargs: Any,
-    ) -> None:
+    ):
         super().__init__(key, config, **kwargs)
         self._config = config
         self._expansion_strategies: List[ExpansionStrategy] = []

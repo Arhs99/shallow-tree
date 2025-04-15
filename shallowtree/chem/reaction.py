@@ -1,5 +1,3 @@
-""" Module containing classes to deal with Reactions.
-"""
 from __future__ import annotations
 
 import abc
@@ -56,7 +54,7 @@ class _ReactionInterfaceMixin:
     """
 
     def fingerprint(
-        self, radius: int, nbits: Optional[int] = None, chiral: bool = False
+            self, radius: int, nbits: Optional[int] = None, chiral: bool = False
     ) -> np.ndarray:
         """
         Returns a difference fingerprint
@@ -137,11 +135,11 @@ class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
     _required_kwargs: List[str] = []
 
     def __init__(
-        self,
-        mol: TreeMolecule,
-        index: int = 0,
-        metadata: Optional[StrDict] = None,
-        **kwargs: Any,
+            self,
+            mol: TreeMolecule,
+            index: int = 0,
+            metadata: Optional[StrDict] = None,
+            **kwargs: Any,
     ) -> None:
         if any(name not in kwargs for name in self._required_kwargs):
             raise KeyError(
@@ -157,7 +155,7 @@ class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
 
     @classmethod
     def from_serialization(
-        cls, init_args: StrDict, reactants: List[List[TreeMolecule]]
+            cls, init_args: StrDict, reactants: List[List[TreeMolecule]]
     ) -> "RetroReaction":
         """
         Create an object from a serialization. It does
@@ -286,11 +284,11 @@ class TemplatedRetroReaction(RetroReaction):
     _required_kwargs = ["smarts"]
 
     def __init__(
-        self,
-        mol: TreeMolecule,
-        index: int = 0,
-        metadata: Optional[StrDict] = None,
-        **kwargs: Any,
+            self,
+            mol: TreeMolecule,
+            index: int = 0,
+            metadata: Optional[StrDict] = None,
+            **kwargs: Any,
     ):
         super().__init__(mol, index, metadata, **kwargs)
         self.smarts: str = kwargs["smarts"]
@@ -434,11 +432,11 @@ class SmilesBasedRetroReaction(RetroReaction):
     _required_kwargs = ["reactants_str"]
 
     def __init__(
-        self,
-        mol: TreeMolecule,
-        index: int = 0,
-        metadata: Optional[StrDict] = None,
-        **kwargs: Any,
+            self,
+            mol: TreeMolecule,
+            index: int = 0,
+            metadata: Optional[StrDict] = None,
+            **kwargs: Any,
     ):
         super().__init__(mol, index, metadata, **kwargs)
         self.reactants_str: str = kwargs["reactants_str"]
@@ -488,7 +486,7 @@ class SmilesBasedRetroReaction(RetroReaction):
         parent_remapping = {}
         pmol = Molecule(smiles=self._mapped_prod_smiles, sanitize=True)
         for atom_idx1, atom_idx2 in enumerate(
-            pmol.rd_mol.GetSubstructMatch(self.mol.mapped_mol)
+                pmol.rd_mol.GetSubstructMatch(self.mol.mapped_mol)
         ):
             atom1 = self.mol.mapped_mol.GetAtomWithIdx(atom_idx1)
             atom2 = pmol.rd_mol.GetAtomWithIdx(atom_idx2)
@@ -526,10 +524,10 @@ class FixedRetroReaction(_ReactionInterfaceMixin):
     """
 
     def __init__(
-        self,
-        mol: UniqueMolecule,
-        smiles: str = "",
-        metadata: Optional[StrDict] = None,
+            self,
+            mol: UniqueMolecule,
+            smiles: str = "",
+            metadata: Optional[StrDict] = None,
     ) -> None:
         self.mol = mol
         self.smiles = smiles
@@ -575,8 +573,8 @@ class FixedRetroReaction(_ReactionInterfaceMixin):
 
 
 def hash_reactions(
-    reactions: Union[Iterable[RetroReaction], Iterable[FixedRetroReaction]],
-    sort: bool = True,
+        reactions: Union[Iterable[RetroReaction], Iterable[FixedRetroReaction]],
+        sort: bool = True,
 ) -> str:
     """
     Creates a hash for a list of reactions
@@ -645,8 +643,8 @@ class _RdChiralProductWrapper:
 
 
 if RDCHIRAL_CPP:
-
     def _wrapper(mol):
         return rdc.rdchiralReactants(mol.mapped_smiles)
+
 
     _RdChiralProductWrapper = _wrapper  # type: ignore
