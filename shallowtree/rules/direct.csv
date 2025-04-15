@@ -1,0 +1,8 @@
+template_code	retro_template	classification
+0	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Br-[c:1][c:2][c:3].Br-[C:4]([C:5])	Reductive cross-electrophile coupling
+1	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Cl-[c:1][c:2][c:3].Br-[C:4]([C:5])	Reductive cross-electrophile coupling
+2	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Cl-[c:1][c:2][c:3].Cl-[C:4]([C:5])	Reductive cross-electrophile coupling
+3	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Br-[c:1][c:2][c:3].Cl-[C:4]([C:5])	Reductive cross-electrophile coupling
+4	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Br-[c:1][c:2][c:3].[C:4](-C(=[O])([OH]))([C:5])	Decarboxylative cross coupling
+5	[c:1](-[C;H1,H2:4]([C:5]))[c:2][c:3]>>Br-[c:1][c:2][c:3].[C:4]([NH2])([C:5])	Deaminative cross coupling
+6	[c:1](-[C;H1:4]([C:5]))[c:2][c:3]>>Br-[c:1][c:2][c:3].[C:4]([B-](F)(F)(F))([C:5])	sp2-sp3 coupling with BF3K
