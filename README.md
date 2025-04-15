@@ -9,7 +9,7 @@ The tool is based on aizynthfinder provided by the MolecularAI group in AstraZen
 - A filter policy model provided by the group
 Please refer to the detailed documentation in https://molecularai.github.io/aizynthfinder/ for instructions on how to train policy models, construct stocks etc 
 
-### New features
+## New features
 - A full tree search is implemented (DFS) instead of MCTS for increased accuracy of predictions
 - Caching tree branches works really well to increase speed
 - A maximum search depth can be set
