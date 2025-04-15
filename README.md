@@ -31,7 +31,7 @@ conda activate shallow-tree
 In python code one needs to import the ```Expander``` class and use any of the two available methods:
 - ```search_tree``` provides scoring and predicted routes and starting materials for a set of query molecules
 - ```context_search``` a SMILES string parameter is required for the desired scaffold which is also indicating the attachment point
-See the ```synth_score_NOTEBOOK``` jupyter notebook example in this repository
+See the ```synth_score_NOTEBOOK.ipynb``` jupyter notebook example in this repository
 
 The ```search_cli``` tool is also available on the command line. These are 2 examples for each of the available search modes:
 ```commandline
