@@ -28,12 +28,14 @@ conda activate shallow-tree
 ```
 
 ## Usage
-In python code one needs to import the ```Expander``` class and use any of the two available methods:
+### In python code
+One needs to import the ```Expander``` class and use any of the two available methods:
 - ```search_tree``` provides scoring and predicted routes and starting materials for a set of query molecules
 - ```context_search``` a SMILES string parameter is required for the desired scaffold which is also indicating the attachment point
 See the ```synth_score_NOTEBOOK.ipynb``` jupyter notebook example in this repository
 
-The ```search_cli``` tool is also available on the command line. These are 2 examples for each of the available search modes:
+### Command line
+```search_cli``` is the command line tool. These are 2 examples for each of the available search modes:
 ```commandline
 echo 'Clc1ccccc1COC5CC(Nc3n[nH]c4cc(c2ccccc2)ccc34)C5' | searchcli --config config.yml --scaffold '[*]c1n[nH]c2cc(-c3ccccc3)ccc12' --depth 2 --routes
 ```
