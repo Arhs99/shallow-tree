@@ -24,6 +24,7 @@ import pandas as pd
 
 from shallowtree.chem import Molecule, TreeMolecule
 from shallowtree.context.config import Configuration
+from shallowtree.context.policy.expansion_strategies import TemplateRules
 
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
@@ -55,6 +56,7 @@ class Expander:
             self.config = Configuration()
 
         self.expansion_policy = self.config.expansion_policy
+        self.rules_expansion = TemplateRules('../rules/direct.csv')
         self.filter_policy = self.config.filter_policy
         self.stock = self.config.stock
         self.max_depth = 2
@@ -66,22 +68,26 @@ class Expander:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
             scaffold = Chem.MolFromSmarts(scaffold_str)
-            actions, _ = self.expansion_policy.get_actions([mol])
             self.solved = dict()
             self.BBs = []
             self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
             score = 0.0
-            for action in actions:
+            actions, _ = self.expansion_policy.get_actions([mol])
+            det_actions = self.rules_expansion.get_actions([mol])
+            for action in det_actions + actions:
                 reactants = action.reactants
                 feasibility_prob = 0
                 if not reactants:
                     continue
-                for name in self.filter_policy.selection:
-                    _, feasibility_prob = self.filter_policy[name].feasibility(action)
-                    action.metadata["feasibility"] = float(feasibility_prob)
-                    break
+                if action.metadata['policy_name'] == 'rules':
+                    feasibility_prob = 1.0
+                else:
+                    for name in self.filter_policy.selection:
+                        _, feasibility_prob = self.filter_policy[name].feasibility(action)
+                        action.metadata["feasibility"] = float(feasibility_prob)
+                        break
                 if feasibility_prob < 0.5:
                     continue
                 root_match = set(mol.index_to_mapping[x] for x in mol.rd_mol.GetSubstructMatch(scaffold))
@@ -138,16 +144,20 @@ class Expander:
                 return cscore
 
         actions, _ = self.expansion_policy.get_actions([mol])
+        det_actions = self.rules_expansion.get_actions([mol])
         score = 0.0
-        for action in actions:
+        for action in actions + det_actions:
             reactants = action.reactants
             feasibility_prob = 0
             if not reactants:
                 continue
-            for name in self.filter_policy.selection:
-                _, feasibility_prob = self.filter_policy[name].feasibility(action)
-                action.metadata["feasibility"] = float(feasibility_prob)
-                break
+            if action.metadata['policy_name'] == 'rules':
+                feasibility_prob = 1.0
+            else:
+                for name in self.filter_policy.selection:
+                    _, feasibility_prob = self.filter_policy[name].feasibility(action)
+                    action.metadata["feasibility"] = float(feasibility_prob)
+                    break
             if feasibility_prob < 0.5:
                 continue
             score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])

@@ -15,6 +15,7 @@ Please refer to the detailed documentation in https://molecularai.github.io/aizy
 - A maximum search depth can be set
 - A context search mode is available for the analysis of collections of molecules with a common scaffold (e.g. parallel libraries) where generally there is only one disconnection of interest in the first step of the retrosynthesis. See also the Jupyter notebook example.
 - A large amount of code has been removed or refactored for simplification and speed optimisation.
+- **Customized collections of templates** The current policy model and templates have been generated from the USPTO dataset and covery chemical synthesis knowledge before 2019 and thus uderrepresenting or not including at all important modern synthetic methods such as sp2-sp3 cross coupling reactions, late-stage functionalization reactions and so on. This feature gives the option to add new reaction templates and enhance or otherwise modify the synthetic knowledge of the tool. In this repo you can find an example collection of templates that cover standard cross coupling reactions
 
 ## Installation
 
