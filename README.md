@@ -46,7 +46,7 @@ searchcli --config config.yml --depth 2 --routes < smiles.txt > routes.csv
 ```
 
 ## Parallelization
-A significant gain in speed and extended ability to scale-up can be achieved by serving the models using ```tensorflow serving``` and parallelization by batching the SMILES inputs. See the [parallel folfer README](./parallel/README.md) for more details.
+A significant gain in speed and extended ability to scale-up can be achieved by serving the models using ```tensorflow serving``` and parallelization by batching the SMILES inputs. See the [parallel folder README](./parallel/README.md) for more details.
 
 ## References
 1. Genheden S, Thakkar A, Chadimova V, et al (2020) AiZynthFinder: a fast, robust and flexible open-source software for retrosynthetic planning. ChemRxiv. Preprint. https://doi.org/10.26434/chemrxiv.12465371.v1
