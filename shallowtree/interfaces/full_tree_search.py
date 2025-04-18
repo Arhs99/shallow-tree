@@ -30,14 +30,13 @@ from shallowtree.context.policy.expansion_strategies import TemplateRules
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
-    from shallowtree.chem import RetroReaction
     from shallowtree.utils.type_utils import (
-        Callable,
         List,
         Optional,
         StrDict,
     )
 
+extra_template_path = '/home/kostas/dev/shallow-tree/shallowtree/rules/direct.csv'
 
 class Expander:
     """
@@ -56,7 +55,7 @@ class Expander:
             self.config = Configuration()
 
         self.expansion_policy = self.config.expansion_policy
-        self.rules_expansion = TemplateRules('../rules/direct.csv')
+        self.rules_expansion = TemplateRules(extra_template_path)
         self.filter_policy = self.config.filter_policy
         self.stock = self.config.stock
         self.max_depth = 2

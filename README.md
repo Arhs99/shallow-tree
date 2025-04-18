@@ -1,7 +1,7 @@
 # shallow-tree
-A tool for the retrosynthetic analysis and route prediction with scoring of molecules
+Synthetic accessibility scoring is an invaluable tool for generative chemistry and more generally for filtering or scoring molecular designs that come either from AI or human designers. It's not hard to understand that synthetic scoring approaches that do not consider how the target molecule can be synthesized are of quite limited use in practice. This work aims to produce a tool that can predict synthetic routes but in a reasonable time frame for many real-world applications.
 ## Description
-The idea of the tool is to restrict the depth of search in order to improve computation speed but in the same time having access to a large amount of synthetically accessible chemical space of enough complexity to be useful in drug discovery applications.
+The idea of the tool is to restrict the depth of search in order to improve computation speed but in the same time having access to a large amount of synthetically accessible chemical space of enough complexity to be useful in drug discovery applications. A number of obvious optimizations like caching, parallel execution etc can significantly reduce times while other approaches could also be tested in the future. 
 
 ## Implementation
 The tool is based on aizynthfinder provided by the MolecularAI group in AstraZeneca https://github.com/MolecularAI/aizynthfinder and specifically I use here:
@@ -44,6 +44,9 @@ and
 ```commandline
 searchcli --config config.yml --depth 2 --routes < smiles.txt > routes.csv
 ```
+
+## Parallelization
+
 
 ## References
 1. Genheden S, Thakkar A, Chadimova V, et al (2020) AiZynthFinder: a fast, robust and flexible open-source software for retrosynthetic planning. ChemRxiv. Preprint. https://doi.org/10.26434/chemrxiv.12465371.v1

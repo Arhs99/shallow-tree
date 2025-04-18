@@ -10,8 +10,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 import onnxruntime
 import psutil
+import requests
 
 try:
+    import grpc
     import tensorflow as tf
     from google.protobuf.json_format import MessageToDict
 
@@ -24,8 +26,12 @@ try:
         prediction_service_pb2_grpc,
     )
 except ImportError:
-    pass
+    SUPPORT_EXTERNAL_APIS = False
+else:
+    SUPPORT_EXTERNAL_APIS = True
 
+
+from shallowtree.utils.exceptions import ExternalModelAPIError
 
 # pylint: enable=all
 from shallowtree.utils.logging import logger
@@ -39,12 +45,17 @@ _logger = logger()
 
 # Suppress tensforflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+tf.config.set_visible_devices([], 'GPU')
+
+TF_SERVING_HOST = 'localhost' #os.environ.get("TF_SERVING_HOST")
+TF_SERVING_REST_PORT = '8501' # os.environ.get("TF_SERVING_REST_PORT")
+TF_SERVING_GRPC_PORT = '8500' #os.environ.get("TF_SERVING_GRPC_PORT")
 
 
 def load_model(
     source: str, key: str, use_remote_models: bool
 ) -> Union[
-    "LocalKerasModel", "LocalOnnxModel"
+    "LocalKerasModel", "LocalOnnxModel", "ExternalModelViaGRPC", "ExternalModelViaREST"
 ]:
     """
     Load model from a configuration specification.
@@ -62,6 +73,23 @@ def load_model(
     """
     if source.split(".")[-1] == "onnx":
         return LocalOnnxModel(source)
+
+    if not SUPPORT_EXTERNAL_APIS:
+        raise ValueError(
+            "Tensorflow is not installed - this installation only supports ONNX models"
+        )
+
+    if not use_remote_models:
+        return LocalKerasModel(source)
+
+    try:
+        return ExternalModelViaGRPC(key)
+    except ExternalModelAPIError:
+        pass
+    try:
+        return ExternalModelViaREST(key)
+    except ExternalModelAPIError:
+        pass
     return LocalKerasModel(source)
 
 
@@ -148,6 +176,177 @@ class LocalOnnxModel:
                 for model_input, input in zip(self._model_inputs, list(args))
             },
         )[0]
+
+
+def _log_and_reraise_exceptions(method: Callable) -> Callable:
+    @functools.wraps(method)
+    def wrapper(*args, **kwargs):
+        try:
+            return method(*args, **kwargs)
+        except Exception as err:
+            msg = "Error when requesting from tensorflow model API"
+            _logger.error("%s: %s", msg, err)
+            raise ExternalModelAPIError(msg)
+
+    return wrapper
+
+
+class ExternalModelViaREST:
+    """
+    A neural network model implementation using TF Serving via REST API.
+
+    :param name: the name of model
+    """
+
+    def __init__(self, name: str) -> None:
+        if not SUPPORT_EXTERNAL_APIS:
+            raise ExternalModelAPIError("API packages are not installed.")
+
+        self._model_url = self._get_model_url(name)
+        self._sig_def = self._get_sig_def()
+
+    def __len__(self) -> int:
+        first_input_name = list(self._sig_def["inputs"].keys())[0]
+        return int(
+            self._sig_def["inputs"][first_input_name]["tensor_shape"]["dim"][1]["size"]
+        )
+
+    def predict(self, *args: np.ndarray, **kwargs: np.ndarray) -> np.ndarray:
+        """
+        Get prediction from model.
+
+        If the keys in `kwargs` agree with the model input names, they
+        will be used in stead of `arg`
+
+        :param args: the input vectors
+        :param kwargs: the named input vectors
+        :return: the vector of the output layer
+        """
+        url = self._model_url + ":predict"
+        res = self._handle_rest_api_request(
+            "POST", url, json=self._make_payload(*args, **kwargs)
+        )
+        return np.asarray(res["outputs"])
+
+    def _get_sig_def(self) -> dict:
+        res = self._handle_rest_api_request("GET", self._model_url + "/metadata")
+        return res["metadata"]["signature_def"]["signature_def"]["serving_default"]
+
+    # pylint: disable=no-self-use
+    @_log_and_reraise_exceptions
+    def _handle_rest_api_request(
+        self, method: str, url: str, *args: Any, **kwargs: Any
+    ) -> dict:
+        res = requests.request(method, url, *args, **kwargs)
+        if res.status_code != 200 or (
+            res.headers["Content-Type"] != "application/json"
+        ):
+            raise ExternalModelAPIError(
+                f"Unexpected response from REST API: {res.status_code}\n{res.text}"
+            )
+
+        return res.json()
+
+    def _make_payload(self, *args: np.ndarray, **kwargs: np.ndarray) -> dict:
+        if all(key in kwargs for key in self._sig_def["inputs"].keys()):
+            data = {key: kwargs[key].tolist() for key in self._sig_def["inputs"].keys()}
+        else:
+            data = {
+                name: fp.tolist()
+                for name, fp in zip(self._sig_def["inputs"].keys(), args)
+            }
+        return {"inputs": data}
+
+    @staticmethod
+    def _get_model_url(name: str) -> str:
+        warning = f"Failed to get url of REST service for external model {name}"
+        if not TF_SERVING_HOST:
+            _logger.warning(warning)
+            raise ExternalModelAPIError("Host not set for model {name}")
+        if not TF_SERVING_REST_PORT:
+            _logger.warning(warning)
+            raise ExternalModelAPIError("REST port not set for model {name}")
+        return f"http://{TF_SERVING_HOST}:{TF_SERVING_REST_PORT}/v1/models/{name}"
+
+
+class ExternalModelViaGRPC:
+    """
+    A neural network model implementation using TF Serving via gRPC.
+
+    :param name: the name of model
+    """
+
+    def __init__(self, name: str) -> None:
+        if not SUPPORT_EXTERNAL_APIS:
+            raise ExternalModelAPIError("API packages are not installed.")
+
+        self._server = f'{TF_SERVING_HOST}:{TF_SERVING_GRPC_PORT}'
+        self._model_name = name
+        self._sig_def = self._get_sig_def()
+
+    def __len__(self) -> int:
+        first_input_name = list(self._sig_def["inputs"].keys())[0]
+        return int(
+            self._sig_def["inputs"][first_input_name]["tensorShape"]["dim"][1]["size"]
+        )
+
+    @_log_and_reraise_exceptions
+    def predict(self, *args: np.ndarray, **kwargs: np.ndarray) -> np.ndarray:
+        """
+        Get prediction from model.
+
+        If the keys in `kwargs` agree with the model input names, they
+        will be used in stead of `arg`
+
+        :param args: the input vectors
+        :param kwargs: the named input vectors
+        :return: the vector of the output layer
+        """
+        input_tensors = self._make_payload(*args, **kwargs)
+        channel = grpc.insecure_channel(self._server)
+        service = prediction_service_pb2_grpc.PredictionServiceStub(channel)
+        request = predict_pb2.PredictRequest()
+        request.model_spec.name = self._model_name
+        for name, tensor in input_tensors.items():
+            request.inputs[name].CopyFrom(tensor)
+        key = list(self._sig_def["outputs"].keys())[0]
+        return tf.make_ndarray(service.Predict(request, 10.0).outputs[key])
+
+    @_log_and_reraise_exceptions
+    def _get_sig_def(self) -> dict:
+        channel = grpc.insecure_channel(self._server)
+        service = prediction_service_pb2_grpc.PredictionServiceStub(channel)
+        request = get_model_metadata_pb2.GetModelMetadataRequest()
+        request.model_spec.name = self._model_name
+        request.metadata_field.append("signature_def")
+        result = MessageToDict(service.GetModelMetadata(request, 10.0))
+        # close the channel so that it won't be reused after fork and fail
+        channel.close()
+        return result["metadata"]["signature_def"]["signatureDef"]["serving_default"]
+
+    def _make_payload(self, *args: np.ndarray, **kwargs: np.ndarray) -> dict:
+        if all(key in kwargs for key in self._sig_def["inputs"].keys()):
+            inputs = kwargs
+        else:
+            inputs = dict(zip(self._sig_def["inputs"].keys(), args))
+
+        tensors = {}
+        for name, vec in inputs.items():
+            size = int(self._sig_def["inputs"][name]["tensorShape"]["dim"][1]["size"])
+            assert size == vec.shape[1], "Incorrect shape for input"
+            tensors[name] = tf.make_tensor_proto(vec, dtype=np.float32, shape=vec.shape)
+        return tensors
+
+    @staticmethod
+    def _get_server(name: str) -> str:
+        warning = f"Failed to get gRPC server for external model {name}"
+        if not TF_SERVING_HOST:
+            _logger.warning(warning)
+            raise ExternalModelAPIError(f"Host not set for model {name}")
+        if not TF_SERVING_GRPC_PORT:
+            _logger.warning(warning)
+            raise ExternalModelAPIError(f"GRPC port not set for model {name}")
+        return f"{TF_SERVING_HOST}:{TF_SERVING_GRPC_PORT}"
 
 
 def _get_thread_count_per_core() -> int:
