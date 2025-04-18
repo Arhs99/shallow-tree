@@ -1,0 +1,12 @@
+expansion:
+  uspto_expand:
+    model: uspto_expand
+    template: <path/to/templates>
+    use_remote_models: True
+    cutoff_number: 50
+filter:
+  filter_policy_all: 
+    model: filter_policy_all
+    use_remote_models: True
+stock:
+  zinc: <path/to/stock>

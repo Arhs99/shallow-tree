@@ -1,0 +1,12 @@
+model_config_list {
+  config {
+    name: 'uspto_expand'
+    base_path: '/models/uspto_expand'
+    model_platform: 'tensorflow'
+  }
+  config {
+    name: 'filter_policy_all'
+    base_path: '/models/filter_policy_all'
+    model_platform: 'tensorflow'
+  }
+}
