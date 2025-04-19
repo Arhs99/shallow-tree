@@ -45,7 +45,7 @@ _logger = logger()
 
 # Suppress tensforflow logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-tf.config.set_visible_devices([], 'GPU')
+# tf.config.set_visible_devices([], 'GPU')
 
 TF_SERVING_HOST = 'localhost' #os.environ.get("TF_SERVING_HOST")
 TF_SERVING_REST_PORT = '8501' # os.environ.get("TF_SERVING_REST_PORT")
