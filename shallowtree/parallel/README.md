@@ -22,4 +22,4 @@ parallel -N 10 -a smiles.txt -j 8 "printf '%s\n' {} | searchcli --config <path/t
 ```
 that takes a ``smiles.txt`` file with SMILES strings as input and runs ``searchcli`` on 8 CPUs and batches of 10 SMILES. 
 
-On my home PC with 1 GPU NVIDIA RTX4070Ti, the ``smiles.txt`` file with 80 SMILES took ~7 mins to run which is about 5 sec per molecule.
+On my home PC with 1 GPU NVIDIA RTX4070Ti, the [smiles.txt](shallowtree/smiles.txt) file with 80 SMILES took ~7 mins to run which is about 5 sec per molecule.
