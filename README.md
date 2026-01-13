@@ -11,7 +11,8 @@ Please refer to the detailed documentation in https://molecularai.github.io/aizy
 
 ## New features
 - A **full tree search** is implemented (DFS) instead of MCTS for increased accuracy of predictions
-- **Caching** tree branches works really well to increase speed
+- **Caching** tree branches works really well to increase speed by 2x-3x
+- Vectorization of hot loops resulted in 3x speed gains
 - A maximum search **depth can be set**
 - A **context search mode** is available for the analysis of collections of molecules with a common scaffold (e.g. parallel libraries) where generally there is only one disconnection of interest in the first step of the retrosynthesis. See also the Jupyter notebook example.
 - A large amount of code has been removed or refactored for simplification and speed optimisation.
@@ -25,6 +26,10 @@ Please refer to the detailed documentation in https://molecularai.github.io/aizy
 cd shallow-tree
 conda env create -f env.yml
 conda activate shallow-tree
+```
+For use with a GPU install tensorflow from conda as follows, it will pick the correct CUDA libraries compatible with your set-up
+```commandline
+conda install -y tensorflow-gpu=2.8.0 -c conda-forge
 ```
 
 ## Usage
