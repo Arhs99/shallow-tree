@@ -1,0 +1,25 @@
+# Project-specific
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+*.yml
+!env.yml
+
+# Test cache
+.pytest_cache/
