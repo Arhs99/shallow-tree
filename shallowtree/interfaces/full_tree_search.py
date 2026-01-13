@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rdkit import Chem
@@ -36,7 +38,8 @@ if TYPE_CHECKING:
         StrDict,
     )
 
-extra_template_path = '/home/kostas/dev/shallow-tree/shallowtree/rules/direct.csv'
+# TODO: Move extra_template_path to config.yml instead of hard-coding
+extra_template_path = Path(__file__).parent.parent / 'rules' / 'direct.csv'
 
 class Expander:
     """
@@ -75,21 +78,36 @@ class Expander:
             score = 0.0
             actions, _ = self.expansion_policy.get_actions([mol])
             det_actions = self.rules_expansion.get_actions([mol])
+
+            # Separate rules-based from ML-based actions, filtering out empty reactants
+            rules_actions = []
+            ml_actions = []
             for action in det_actions + actions:
-                reactants = action.reactants
-                feasibility_prob = 0
-                if not reactants:
+                if not action.reactants:
                     continue
                 if action.metadata['policy_name'] == 'rules':
-                    feasibility_prob = 1.0
+                    action.metadata["feasibility"] = 1.0
+                    rules_actions.append(action)
                 else:
-                    for name in self.filter_policy.selection:
-                        _, feasibility_prob = self.filter_policy[name].feasibility(action)
-                        action.metadata["feasibility"] = float(feasibility_prob)
-                        break
-                if feasibility_prob < 0.5:
-                    continue
-                root_match = set(mol.index_to_mapping[x] for x in mol.rd_mol.GetSubstructMatch(scaffold))
+                    ml_actions.append(action)
+
+            # Batch predict all ML actions at once
+            ml_feasibilities = []
+            if ml_actions:
+                filter_name = next(iter(self.filter_policy.selection))
+                ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
+                for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+                    action.metadata["feasibility"] = prob
+
+            # Collect all feasible actions (rules + ML with prob >= 0.5)
+            feasible_actions = rules_actions + [
+                action for action, (_, prob) in zip(ml_actions, ml_feasibilities)
+                if prob >= 0.5
+            ]
+
+            root_match = set(mol.index_to_mapping[x] for x in mol.rd_mol.GetSubstructMatch(scaffold))
+            for action in feasible_actions:
+                reactants = action.reactants
                 for r in reactants[0]:
                     r_match = set(r.index_to_mapping[x] for x in r.rd_mol.GetSubstructMatch(scaffold))
                     if r_match and len(r_match ^ root_match) == 2:
@@ -114,6 +132,7 @@ class Expander:
         """
         self.max_depth = max_depth
         rows = []
+        time = datetime.now()
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
@@ -127,6 +146,7 @@ class Expander:
                 self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
             rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
+            print(f'{smi} : {score} time: {datetime.now() - time}')
         df = pd.DataFrame(rows)
         return df
 
@@ -144,21 +164,36 @@ class Expander:
 
         actions, _ = self.expansion_policy.get_actions([mol])
         det_actions = self.rules_expansion.get_actions([mol])
-        score = 0.0
+
+        # Separate rules-based from ML-based actions, filtering out empty reactants
+        rules_actions = []
+        ml_actions = []
         for action in actions + det_actions:
-            reactants = action.reactants
-            feasibility_prob = 0
-            if not reactants:
+            if not action.reactants:
                 continue
             if action.metadata['policy_name'] == 'rules':
-                feasibility_prob = 1.0
+                action.metadata["feasibility"] = 1.0
+                rules_actions.append(action)
             else:
-                for name in self.filter_policy.selection:
-                    _, feasibility_prob = self.filter_policy[name].feasibility(action)
-                    action.metadata["feasibility"] = float(feasibility_prob)
-                    break
-            if feasibility_prob < 0.5:
-                continue
+                ml_actions.append(action)
+
+        # Batch predict all ML actions at once
+        ml_feasibilities = []
+        if ml_actions:
+            filter_name = next(iter(self.filter_policy.selection))
+            ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
+            for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+                action.metadata["feasibility"] = prob
+
+        # Collect all feasible actions (rules + ML with prob >= 0.5)
+        feasible_actions = rules_actions + [
+            action for action, (_, prob) in zip(ml_actions, ml_feasibilities)
+            if prob >= 0.5
+        ]
+
+        score = 0.0
+        for action in feasible_actions:
+            reactants = action.reactants
             score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
             if score > 0.9:
                 self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])

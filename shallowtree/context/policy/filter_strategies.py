@@ -148,6 +148,57 @@ class QuickKerasFilter(FilterStrategy):
         kwargs = {self._prod_fp_name: prod_fp, self._rxn_fp_name: rxn_fp}
         return self.model.predict(prod_fp, rxn_fp, **kwargs)[0][0]
 
+    def batch_feasibility(
+        self, reactions: List["RetroReaction"]
+    ) -> List[Tuple[bool, float]]:
+        """
+        Batch prediction for multiple reactions.
+
+        :param reactions: list of reactions to evaluate
+        :return: list of (feasible, probability) tuples in same order as input
+        """
+        if not reactions:
+            return []
+
+        # Separate reactions with/without reactants and compute fingerprints
+        valid_indices = []
+        prod_fps = []
+        rxn_fps = []
+
+        for i, reaction in enumerate(reactions):
+            if not reaction.reactants:
+                continue
+            valid_indices.append(i)
+            prod_fp, rxn_fp = self._reaction_to_fingerprint(reaction, self.model)
+            prod_fps.append(prod_fp)
+            rxn_fps.append(rxn_fp)
+
+        # Initialize results with (False, 0.0) for all reactions
+        results: List[Tuple[bool, float]] = [(False, 0.0)] * len(reactions)
+
+        # Handle case where no reactions have valid reactants
+        if not valid_indices:
+            return results
+
+        # Stack fingerprints into batches
+        prod_batch = np.vstack(prod_fps)
+        rxn_batch = np.vstack(rxn_fps)
+
+        # Single batched prediction
+        kwargs = {self._prod_fp_name: prod_batch, self._rxn_fp_name: rxn_batch}
+        probs = self.model.predict(prod_batch, rxn_batch, **kwargs)
+
+        # Handle different output shapes
+        if probs.ndim > 1:
+            probs = probs[:, 0]
+
+        # Populate results for valid reactions
+        for idx, prob in zip(valid_indices, probs):
+            prob_float = float(prob)
+            results[idx] = (prob_float >= self.filter_cutoff, prob_float)
+
+        return results
+
     @staticmethod
     def _reaction_to_fingerprint(
         reaction: RetroReaction, model: Any
