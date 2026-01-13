@@ -20,6 +20,8 @@ import sys
 from shallowtree.interfaces.full_tree_search import Expander
 import argparse
 
+from rdkit import Chem
+
 
 def main():
     # Set up command-line argument parser
@@ -70,6 +72,7 @@ def main():
         print('Use -h or --help for help', file=sys.stderr)
         sys.exit(1)
     smiles = [x.strip() for x in sys.stdin]
+    smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles if Chem.MolFromSmiles(x) is not None]
     args = parser.parse_args()
     expander = Expander(configfile=args.config)
     expander.expansion_policy.select_first()
