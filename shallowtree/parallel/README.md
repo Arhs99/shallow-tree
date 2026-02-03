@@ -23,7 +23,9 @@ parallel -N 10 -a smiles.txt -j 8 "printf '%s\n' {} | searchcli --config <path/t
 that takes a ``smiles.txt`` file with SMILES strings as input and runs ``searchcli`` on 8 CPUs and batches of 10 SMILES. 
 
 On my home PC with 1 GPU NVIDIA RTX4070Ti, the [smiles.txt](/shallowtree/smiles.txt) file with 80 SMILES took ~7 mins to run which is about 5 sec per molecule.
+
 Further performance enhancement is achieved by persistent caching of intermediates with their routes via Redis as described in the next section.
+
 On the same PC and command as above, with Redis caching enabled and starting from a completely empty cache, we can achieve doubling of performance with 3m 11sec for the run or 2.4 sec per molecule
 
 
