@@ -61,6 +61,7 @@ class Expander:
         self.rules_expansion = TemplateRules(extra_template_path)
         self.filter_policy = self.config.filter_policy
         self.stock = self.config.stock
+        self.redis_cache = self.config.redis_cache
         self.max_depth = 2
 
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
@@ -75,6 +76,11 @@ class Expander:
             self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
+
+            # Pre-populate from Redis if available
+            if self.redis_cache:
+                self._load_from_redis(mol)
+
             score = 0.0
             actions, _ = self.expansion_policy.get_actions([mol])
             det_actions = self.rules_expansion.get_actions([mol])
@@ -116,6 +122,10 @@ class Expander:
                         if score > 0.9:
                             self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
                         break
+            # Persist to Redis if available and successful
+            if self.redis_cache and score > 0.9:
+                self._save_to_redis()
+
             if score > 0.9:
                 self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
@@ -132,7 +142,6 @@ class Expander:
         """
         self.max_depth = max_depth
         rows = []
-        time = datetime.now()
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
@@ -141,12 +150,21 @@ class Expander:
             self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
+
+            # Pre-populate from Redis if available
+            if self.redis_cache:
+                self._load_from_redis(mol)
+
             score = self.req_search_tree(mol, depth=0)
+
+            # Persist to Redis if available and successful
+            if self.redis_cache and score > 0.9:
+                self._save_to_redis()
+
             if score > 0.9:
                 self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
             rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
-            print(f'{smi} : {score} time: {datetime.now() - time}')
         df = pd.DataFrame(rows)
         return df
 
@@ -161,6 +179,20 @@ class Expander:
             cdepth, cscore = self.cache[mol.inchi_key]
             if cdepth <= depth:
                 return cscore
+
+        # Check Redis cache if local cache miss
+        if self.redis_cache and mol.inchi_key not in self.cache:
+            redis_cache_data = self.redis_cache.get_cache(mol.inchi_key)
+            if redis_cache_data:
+                cdepth, cscore = redis_cache_data
+                self.cache[mol.inchi_key] = (cdepth, cscore)  # Populate local cache
+                if cdepth <= depth:
+                    self._cache_counter += 1
+                    # Also try to load solved data
+                    solved_data = self.redis_cache.get_solved(mol.inchi_key)
+                    if solved_data:
+                        self.solved[mol.inchi_key] = solved_data
+                    return cscore
 
         actions, _ = self.expansion_policy.get_actions([mol])
         det_actions = self.rules_expansion.get_actions([mol])
@@ -198,8 +230,12 @@ class Expander:
             if score > 0.9:
                 self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
                 self.cache[mol.inchi_key] = (depth, score)
+                if self.redis_cache:
+                    self.redis_cache.set_cache(mol.inchi_key, depth, score)
                 return score
         self.cache[mol.inchi_key] = (depth, score)
+        if self.redis_cache:
+            self.redis_cache.set_cache(mol.inchi_key, depth, score)
         return score
 
     def best_route(self, mol: Molecule, depth: int, tree: defaultdict):
@@ -215,3 +251,36 @@ class Expander:
                 for x in rxn:
                     self.best_route(x, depth + 1, tree)
                 return
+
+    def _load_from_redis(self, root_mol: TreeMolecule) -> None:
+        """Pre-populate local caches from Redis for the root molecule subtree."""
+        if not self.redis_cache:
+            return
+
+        cache_data = self.redis_cache.get_cache(root_mol.inchi_key)
+        if cache_data:
+            self.cache[root_mol.inchi_key] = cache_data
+            solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
+            if solved_data:
+                self.solved[root_mol.inchi_key] = solved_data
+                self._load_solved_subtree(solved_data[0])
+
+    def _load_solved_subtree(self, reactants: List[TreeMolecule]) -> None:
+        """Recursively load solved entries for reactants."""
+        for mol in reactants:
+            if mol.inchi_key not in self.solved:
+                solved_data = self.redis_cache.get_solved(mol.inchi_key)
+                if solved_data:
+                    self.solved[mol.inchi_key] = solved_data
+                    self._load_solved_subtree(solved_data[0])
+
+    def _save_to_redis(self) -> None:
+        """Persist all solved routes to Redis."""
+        if not self.redis_cache:
+            return
+
+        for inchi_key, (reactants, score, classification) in self.solved.items():
+            self.redis_cache.set_solved(inchi_key, reactants, score, classification)
+            if inchi_key in self.cache:
+                depth, cache_score = self.cache[inchi_key]
+                self.redis_cache.set_cache(inchi_key, depth, cache_score)

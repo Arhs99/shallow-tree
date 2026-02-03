@@ -36,3 +36,7 @@ class StockException(Exception):
 
 class TreeAnalysisException(Exception):
     """Exception raised when analysing trees"""
+
+
+class CacheException(Exception):
+    """An exception raised by cache classes"""

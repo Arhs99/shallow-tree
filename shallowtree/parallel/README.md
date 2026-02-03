@@ -23,3 +23,91 @@ parallel -N 10 -a smiles.txt -j 8 "printf '%s\n' {} | searchcli --config <path/t
 that takes a ``smiles.txt`` file with SMILES strings as input and runs ``searchcli`` on 8 CPUs and batches of 10 SMILES. 
 
 On my home PC with 1 GPU NVIDIA RTX4070Ti, the [smiles.txt](/shallowtree/smiles.txt) file with 80 SMILES took ~7 mins to run which is about 5 sec per molecule.
+Further performance enhancement is achieved by persistent caching of intermediates with their routes via Redis as described in the next section.
+On the same PC and command as above, with Redis caching enabled and starting from a completely empty cache, we can achieve doubling of performance with 3m 11sec for the run or 2.4 sec per molecule
+
+
+## Redis Cache Setup
+
+For shared caching across parallel workers, install and start Redis:
+
+```bash
+# Install (Ubuntu/Debian)
+sudo apt update && sudo apt install redis-server -y
+
+# Enable persistence
+sudo sed -i 's/appendonly no/appendonly yes/' /etc/redis/redis.conf
+
+# Start and enable on boot
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+
+# Verify Redis is running
+redis-cli ping  # Should return PONG
+```
+
+Install the cache extra:
+```bash
+poetry install -E cache
+```
+
+Update your config.yml:
+
+```yaml
+cache:
+  enabled: true
+  host: localhost
+  port: 6379
+```
+
+The cache uses a config hash prefix, so different configurations automatically get separate cache entries. All parallel workers share the same Redis cache, avoiding redundant computations across processes.
+
+### Inspecting Cached Data
+
+**Using redis-cli:**
+```bash
+# List all shallowtree keys
+redis-cli KEYS "shallowtree:*"
+
+# Get a specific cache entry (shows depth, score, timestamp)
+redis-cli GET "shallowtree:<config_hash>:cache:<inchi_key>"
+
+# Get a solved route entry (shows reactants SMILES, score, classification)
+redis-cli GET "shallowtree:<config_hash>:solved:<inchi_key>"
+
+# Count all entries
+redis-cli KEYS "shallowtree:*" | wc -l
+
+# Clear all shallowtree entries
+redis-cli KEYS "shallowtree:*" | xargs redis-cli DEL
+```
+
+**Using Python:**
+```python
+import redis
+import json
+
+r = redis.Redis(decode_responses=True)
+
+# List all keys
+for key in r.scan_iter("shallowtree:*"):
+    print(key)
+
+# Get and parse a specific entry
+data = r.get("shallowtree:<config_hash>:cache:<inchi_key>")
+if data:
+    parsed = json.loads(data)
+    print(f"Depth: {parsed['depth']}, Score: {parsed['score']}")
+```
+
+**Key format:**
+- `shallowtree:<config_hash>:cache:<inchi_key>` - Branch pruning data
+  ```json
+  {"depth": 1, "score": 0.95, "ts": 1706900000}
+  ```
+- `shallowtree:<config_hash>:solved:<inchi_key>` - Route reconstruction data
+  ```json
+  {"reactants_smiles": ["CCO", "CC(=O)O"], "score": 0.95, "classification": "Amide bond formation", "ts": 1706900000}
+  ```
+
+The `config_hash` is a 16-character hash of your config (model paths, stock paths, cutoff values) so different configurations get isolated namespaces.

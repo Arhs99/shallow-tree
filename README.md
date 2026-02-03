@@ -12,6 +12,7 @@ Please refer to the detailed documentation in https://molecularai.github.io/aizy
 ## New features
 - A **full tree search** is implemented (DFS) instead of MCTS for increased accuracy of predictions
 - **Caching** tree branches works really well to increase speed by 2x-3x
+- **Persistent Redis cache** for sharing results across parallel workers and surviving process restarts
 - Vectorization of hot loops resulted in 3x speed gains
 - A maximum search **depth can be set**
 - A **context search mode** is available for the analysis of collections of molecules with a common scaffold (e.g. parallel libraries) where generally there is only one disconnection of interest in the first step of the retrosynthesis. See also the Jupyter notebook example.
@@ -26,10 +27,16 @@ Please refer to the detailed documentation in https://molecularai.github.io/aizy
 cd shallow-tree
 conda env create -f env.yml
 conda activate shallow-tree
+poetry install
 ```
 For use with a GPU install tensorflow from conda as follows, it will pick the correct CUDA libraries compatible with your set-up
 ```commandline
 conda install -y tensorflow-gpu=2.8.0 -c conda-forge
+```
+
+For Redis caching support (recommended for parallel execution):
+```commandline
+poetry install -E cache
 ```
 
 ## Usage
@@ -51,7 +58,22 @@ searchcli --config config.yml --depth 2 --routes < smiles.txt > routes.csv
 ```
 
 ## Parallelization
-A significant gain in speed and extended ability to scale-up can be achieved by serving the models using ```tensorflow serving``` and parallelization by batching the SMILES inputs. See the [parallel folder README](shallowtree/parallel/README.md) for more details.
+A significant gain in speed and extended ability to scale-up can be achieved by serving the models using ```tensorflow serving``` and parallelization by batching the SMILES inputs.
+
+For optimal performance with parallel workers, enable Redis caching to share computed results across processes:
+```yaml
+# In your config.yml
+cache:
+  enabled: true
+  host: localhost
+  port: 6379
+```
+
+See the [parallel folder README](shallowtree/parallel/README.md) for TensorFlow Serving setup, Redis installation, and usage examples.
+
+For more information on the effect of caching intermediates on the performance of the algorithm, consult the AstraZeneca paper in reference 2 below.
 
 ## References
 1. Genheden S, Thakkar A, Chadimova V, et al (2020) AiZynthFinder: a fast, robust and flexible open-source software for retrosynthetic planning. ChemRxiv. Preprint. https://doi.org/10.26434/chemrxiv.12465371.v1
+2. Pablo Iáñez Picazo, Alexey Voronov, Samuel Genheden, et al. Joint synthesis planning by leveraging common intermediates. ChemRxiv. 23 January 2026.
+DOI: https://doi.org/10.26434/chemrxiv.10001547/v1

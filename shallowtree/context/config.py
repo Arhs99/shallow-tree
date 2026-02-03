@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import yaml
 
@@ -12,6 +12,7 @@ from shallowtree.context.stock import Stock
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
+    from shallowtree.context.cache import RedisCache
     from shallowtree.utils.type_utils import Any, StrDict
 
 
@@ -25,6 +26,7 @@ class Configuration:
     stock: Stock = field(init=False)
     expansion_policy: ExpansionPolicy = field(init=False)
     filter_policy: FilterPolicy = field(init=False)
+    redis_cache: Optional["RedisCache"] = field(init=False, default=None)
 
     def __post_init__(self):
         self.stock = Stock()
@@ -56,12 +58,25 @@ class Configuration:
         expansion_config = source.pop("expansion", {})
         filter_config = source.pop("filter", {})
         stock_config = source.pop("stock", {})
+        cache_config = source.pop("cache", {})
 
         config_obj = Configuration()
 
         config_obj.expansion_policy.load_from_config(**expansion_config)
         config_obj.filter_policy.load_from_config(**filter_config)
         config_obj.stock.load_from_config(**stock_config)
+
+        # Initialize Redis cache if configured and enabled
+        if cache_config.get("enabled", False):
+            from shallowtree.context.cache import RedisCache
+            config_obj.redis_cache = RedisCache(
+                config=config_obj,
+                host=cache_config.get("host", "localhost"),
+                port=cache_config.get("port", 6379),
+                db=cache_config.get("db", 0),
+                password=cache_config.get("password"),
+                socket_timeout=cache_config.get("socket_timeout", 5.0),
+            )
 
         return config_obj
 
