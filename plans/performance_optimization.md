@@ -77,7 +77,7 @@ Called 467,857 times — same templates recompiled for every molecule. With ~80 
 
 ## Phase 1: Cross-Molecule Cache Sharing
 
-**Status:** TODO
+**Status:** ✅ DONE
 
 **Goal:** Avoid recomputing subtrees for intermediates shared across input molecules (common in lead optimization batches).
 
@@ -114,7 +114,7 @@ def search_tree(self, smiles, max_depth=2):
 
 ## Phase 2: RDChiral Template Compilation Cache
 
-**Status:** TODO
+**Status:** ✅ DONE
 
 **Goal:** Avoid recompiling the same SMARTS template for every molecule it's applied to.
 
@@ -149,7 +149,7 @@ In `_apply_with_rdkit()` (line 367):
 
 ## Phase 2b: `_RdChiralProductWrapper` Cache
 
-**Status:** TODO
+**Status:** ✅ DONE
 
 **Goal:** Avoid redundantly wrapping the same product molecule for every template applied to it.
 
@@ -185,7 +185,7 @@ rct = _cached_rdchiral_product_wrapper(self.mol.mapped_smiles, self.mol)
 
 ## Phase 3: Stock Lookup Optimization
 
-**Status:** TODO
+**Status:** ✅ DONE
 
 **Goal:** Cache stock results in the DFS cache and fix minor anti-patterns.
 
@@ -222,6 +222,42 @@ rct = _cached_rdchiral_product_wrapper(self.mol.mapped_smiles, self.mol)
 **Expected impact:** Modest per-molecule, but accumulates on batches with shared building blocks (very common -- the same stock chemicals appear in many routes). Combined with Phase 1 (shared cache), this means stock molecules are checked once total across the entire batch.
 
 **Verify:** Count `Stock.__contains__` calls before/after on 40-SMILES batch.
+
+---
+
+## Phase 3b: Default to RDKit over RDChiral
+
+**Status:** ✅ DONE
+
+**Goal:** Skip RDChiral's chirality handling for queries without stereochemistry (the common case).
+
+**Changes:**
+- `shallowtree/chem/reaction.py:306` — `kwargs.get("use_rdchiral", True)` → `False`
+- `shallowtree/context/policy/expansion_strategies.py:320` — `kwargs.get("use_rdchiral", True)` → `False`
+- `shallowtree/context/policy/expansion_strategies.py:255` — `self.use_rdchiral = True` → `False`
+
+Users can restore RDChiral with `use_rdchiral: true` in config.yml when chirality matters.
+
+**Actual impact:** 805s → 528s (-277s). RDKit `_apply_with_rdkit` costs 245s vs RDChiral's 488s for the same templates. `rdchiralRun` and `_RdChiralProductWrapper.__init__` fully eliminated from the profile.
+
+---
+
+## Cumulative Profiling Results (40 SMILES, depth 2, local Keras)
+
+| Metric | Baseline | After all phases | Change |
+|--------|----------|-----------------|--------|
+| **Wall time** | 1247s | 528s | **-719s (2.36x)** |
+| **Per molecule** | 31.2s | 13.2s | **-18.0s** |
+| **DFS calls** | 153,619 | 128,987 | -16% |
+| **Template applications** | 467,857 | 382,694 | -18% |
+| **RDChiral** | 933s | 0s | eliminated |
+| **RDKit template application** | — | 245s | replaced RDChiral |
+| **Keras predict** | 241s | 212s | -12% |
+| **TreeMolecule.__init__** | 93s | 228s | +135s (RDKit produces more duplicates) |
+
+### Current bottlenecks
+1. **RDKit template application + TreeMolecule creation:** 245s + 228s (90%) — RDKit's `RunReactants` produces more duplicate outcomes than RDChiral
+2. **Keras/TF inference:** 212s (40%) — TF framework overhead still ~110s; ONNX (Phase 6) would eliminate this
 
 ---
 
@@ -315,16 +351,17 @@ Add `close()` method: `self._session.close()`
 | Phase | Change | Files | Expected Savings | Effort | Status |
 |-------|--------|-------|-----------------|--------|--------|
 | 0 | Profiling script | `tools/profile_search.py`, `full_tree_search.py` | Baseline data | Low | ✅ Done |
-| 1 | Cross-molecule cache | `full_tree_search.py` | Major (cuts DFS calls) | Low | TODO |
-| 2 | RDChiral template cache | `reaction.py` | ~83s | Low | TODO |
-| 2b | `_RdChiralProductWrapper` cache | `reaction.py` | Up to ~195s | Low | TODO |
-| 3 | Stock cache + reorder | `full_tree_search.py`, `stock.py`, `queries.py` | Modest | Low | TODO |
+| 1 | Cross-molecule cache | `full_tree_search.py` | -116s (1.10x) | Low | ✅ Done |
+| 2 | RDChiral template cache | `reaction.py` | `initialize_rxn_from_smarts` eliminated | Low | ✅ Done |
+| 2b | `_RdChiralProductWrapper` cache | `reaction.py` | Modest (effective after Phase 3) | Low | ✅ Done |
+| 3 | Stock cache + reorder | `full_tree_search.py`, `queries.py` | -287s cumulative (1.55x) | Low | ✅ Done |
+| 3b | Default to RDKit over RDChiral | `reaction.py`, `expansion_strategies.py` | -277s (1.55x → 2.36x) | Very Low | ✅ Done |
 | 4 | gRPC channel pooling | `models.py` | 10-60s (remote only) | Low | TODO |
 | 5 | HTTP session pooling | `models.py` | Modest (REST only) | Very Low | TODO |
-| 6 | ONNX conversion | `tools/convert_to_onnx.py`, `pyproject.toml` | ~130s+ | Medium | TODO |
+| 6 | ONNX conversion | `tools/convert_to_onnx.py`, `pyproject.toml` | ~130s+ TF overhead | Medium | TODO |
 | ~~7~~ | ~~Cython~~ | — | — | — | SKIPPED |
 
-**Combined estimated speedup:** 3-6x for local mode (Phases 1-3+2b+6), additional 1.5-3x for remote mode (Phases 4-5).
+**Achieved speedup:** 2.36x for local mode (1247s → 528s, 40 SMILES depth 2). Remaining bottlenecks: Keras/TF inference (212s, 40%), TreeMolecule creation (228s, 43%).
 
 ## Execution Approach
 
