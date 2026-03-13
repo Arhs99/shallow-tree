@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import hashlib
-from functools import partial
+from functools import lru_cache, partial
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -25,6 +25,17 @@ from shallowtree.chem.mol import (
     TreeMolecule,
 )
 from shallowtree.utils.logging import logger
+
+
+@lru_cache(maxsize=2048)
+def _cached_rdchiral_reaction(smarts: str):
+    return rdc.rdchiralReaction(smarts)
+
+
+@lru_cache(maxsize=2048)
+def _cached_rdkit_reaction(smarts: str):
+    return AllChem.ReactionFromSmarts(smarts)
+
 
 if TYPE_CHECKING:
     from shallowtree.chem.mol import UniqueMolecule
@@ -292,7 +303,7 @@ class TemplatedRetroReaction(RetroReaction):
     ):
         super().__init__(mol, index, metadata, **kwargs)
         self.smarts: str = kwargs["smarts"]
-        self._use_rdchiral: bool = kwargs.get("use_rdchiral", True)
+        self._use_rdchiral: bool = kwargs.get("use_rdchiral", False)
         self._rd_reaction: Optional[RdReaction] = None
 
     def __str__(self) -> str:
@@ -322,8 +333,8 @@ class TemplatedRetroReaction(RetroReaction):
         Apply a reactions smarts to a molecule and return the products (reactants for retro templates)
         Will try to sanitize the reactants, and if that fails it will not return that molecule
         """
-        reaction = rdc.rdchiralReaction(self.smarts)
-        rct = _RdChiralProductWrapper(self.mol)
+        reaction = _cached_rdchiral_reaction(self.smarts)
+        rct = _cached_rdchiral_product_wrapper(self.mol)
         try:
             reactants = rdc.rdchiralRun(reaction, rct, keep_mapnums=True)
         except RuntimeError as err:
@@ -364,7 +375,7 @@ class TemplatedRetroReaction(RetroReaction):
         return self._reactants
 
     def _apply_with_rdkit(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
-        rxn = AllChem.ReactionFromSmarts(self.smarts)
+        rxn = _cached_rdkit_reaction(self.smarts)
         try:
             reactants_list = rxn.RunReactants([self.mol.mapped_mol])
         except:  # pylint: disable=bare-except
@@ -648,3 +659,15 @@ if RDCHIRAL_CPP:
 
 
     _RdChiralProductWrapper = _wrapper  # type: ignore
+
+
+_rdchiral_product_cache = {}
+
+
+def _cached_rdchiral_product_wrapper(mol):
+    key = mol.mapped_smiles
+    if key in _rdchiral_product_cache:
+        return _rdchiral_product_cache[key]
+    wrapper = _RdChiralProductWrapper(mol)
+    _rdchiral_product_cache[key] = wrapper
+    return wrapper
