@@ -2,8 +2,38 @@
 I have tried ```tensorflow serving``` running the models in a docker container. More details on installing ```docker```, then ```nvidia-docker``` for GPU support and finally ```tensorflow serving``` can be found in: https://github.com/tensorflow/serving/blob/master/tensorflow_serving/g3doc/docker.md
 
 When set-up is complete, you need to:
+- convert the Keras models to SavedModel format (see below)
 - modify the configuration yml file, see ``shallowtree/parallel/config_remote.yml`` as an example
 - a config file to tell tensorflow serving where to find the expansion policy and the filter policy models, see ``shallowtree/parallel/config_tf_server.txt`` as an example
+- a batching config file to control how TF Serving groups requests for GPU efficiency, see ``shallowtree/parallel/config_batch.txt``
+
+### Converting Keras models to SavedModel format
+
+TF Serving requires models in SavedModel format with a versioned subdirectory (e.g. ``1/``). Convert the original ``.hdf5`` Keras models as follows:
+
+```python
+import tensorflow as tf
+
+# Expansion policy
+model = tf.keras.models.load_model('path/to/expansion_policy.hdf5')
+model.save('path/to/uspto_expand/1')
+
+# Filter policy
+model = tf.keras.models.load_model('path/to/filter_policy_all.hdf5')
+model.save('path/to/filter_policy_all/1')
+```
+
+This produces the directory structure TF Serving expects:
+```
+uspto_expand/
+└── 1/
+    ├── saved_model.pb
+    └── variables/
+        ├── variables.data-00000-of-00001
+        └── variables.index
+```
+
+### Starting the docker container
 
 Then start the docker container by executing:
 ```
