@@ -263,7 +263,7 @@ Users can restore RDChiral with `use_rdchiral: true` in config.yml when chiralit
 
 ## Phase 4: gRPC Channel Pooling
 
-**Status:** TODO
+**Status:** ✅ DONE
 
 **Goal:** Reuse gRPC channels instead of creating one per prediction call.
 
@@ -292,7 +292,11 @@ def close(self):
 
 **Expected impact:** Saves ~5-20ms per predict call. For remote mode with thousands of calls per batch, this is significant (10-60s saved on 40 molecules).
 
-**Verify:** Time 10-SMILES batch with remote models before/after.
+**Actual impact (80 SMILES, depth 2, TF Serving on RTX 4070 Ti, `parallel -j 8`):**
+- Before: 1m 20.6s (1.01s/mol)
+- After: 1m 17.4s (0.97s/mol) — ~4% faster, sub-1s per molecule
+
+**GPU utilization note:** The RTX 4070 Ti sits at only 3-5% SM utilization during the run. The bottleneck is CPU-side (RDKit template application, TreeMolecule creation, Python overhead), not GPU inference or gRPC overhead. The GPU is starved for work — each `parallel` worker sends small sequential requests. Further GPU speedup would require batching expansion/filter predictions across molecules within each worker, but the DFS structure makes this difficult since each prediction depends on the previous one's results. The GPU is effectively a latency device here, not a throughput device.
 
 ---
 
@@ -356,12 +360,14 @@ Add `close()` method: `self._session.close()`
 | 2b | `_RdChiralProductWrapper` cache | `reaction.py` | Modest (effective after Phase 3) | Low | ✅ Done |
 | 3 | Stock cache + reorder | `full_tree_search.py`, `queries.py` | -287s cumulative (1.55x) | Low | ✅ Done |
 | 3b | Default to RDKit over RDChiral | `reaction.py`, `expansion_strategies.py` | -277s (1.55x → 2.36x) | Very Low | ✅ Done |
-| 4 | gRPC channel pooling | `models.py` | 10-60s (remote only) | Low | TODO |
+| 4 | gRPC channel pooling | `models.py` | 10-60s (remote only) | Low | ✅ Done |
 | 5 | HTTP session pooling | `models.py` | Modest (REST only) | Very Low | TODO |
 | 6 | ONNX conversion | `tools/convert_to_onnx.py`, `pyproject.toml` | ~130s+ TF overhead | Medium | TODO |
 | ~~7~~ | ~~Cython~~ | — | — | — | SKIPPED |
 
-**Achieved speedup:** 2.36x for local mode (1247s → 528s, 40 SMILES depth 2). Remaining bottlenecks: Keras/TF inference (212s, 40%), TreeMolecule creation (228s, 43%).
+**Achieved speedup (local mode):** 2.36x (1247s → 528s, 40 SMILES depth 2). Remaining bottlenecks: Keras/TF inference (212s, 40%), TreeMolecule creation (228s, 43%).
+
+**Achieved speedup (remote mode, TF Serving + GPU):** 80 SMILES in 1m 17s (0.97s/mol) with `parallel -j 8`. GPU (RTX 4070 Ti) at 3-5% SM utilization — CPU-bound by RDKit/Python, not by inference or networking. The GPU serves as a low-latency inference endpoint but is far from saturated.
 
 ## Execution Approach
 
