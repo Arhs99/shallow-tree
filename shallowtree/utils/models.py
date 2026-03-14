@@ -13,22 +13,34 @@ import psutil
 import requests
 
 try:
-    import grpc
+    # import grpc
     import tensorflow as tf
     from google.protobuf.json_format import MessageToDict
 
     # pylint: disable=all
     from tensorflow.keras.metrics import top_k_categorical_accuracy
     from tensorflow.keras.models import load_model as load_keras_model
+    # from tensorflow_serving.apis import (
+    #     get_model_metadata_pb2,
+    #     predict_pb2,
+    #     prediction_service_pb2_grpc,
+    # )
+except ImportError as e:
+    SUPPORT_EXTERNAL_APIS = False
+    print(e)
+    print(80*"#")
+else:
+    SUPPORT_EXTERNAL_APIS = True
+
+try:
+    import grpc
     from tensorflow_serving.apis import (
         get_model_metadata_pb2,
         predict_pb2,
         prediction_service_pb2_grpc,
     )
 except ImportError:
-    SUPPORT_EXTERNAL_APIS = False
-else:
-    SUPPORT_EXTERNAL_APIS = True
+    pass
 
 
 from shallowtree.utils.exceptions import ExternalModelAPIError
@@ -73,6 +85,8 @@ def load_model(
     """
     if source.split(".")[-1] == "onnx":
         return LocalOnnxModel(source)
+
+    print(f'The value of SUPPORT_EXTERNAL_APIS: {SUPPORT_EXTERNAL_APIS}')
 
     if not SUPPORT_EXTERNAL_APIS:
         raise ValueError(
