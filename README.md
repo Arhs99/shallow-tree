@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Arhs99/shallow-tree)
+
 # shallow-tree
 Synthetic accessibility scoring is an invaluable tool for generative chemistry and more generally for filtering or scoring molecular designs that come either from AI or human designers. It's not hard to understand that synthetic scoring approaches that do not consider how the target molecule can be synthesized are of quite limited use in practice. This work aims to produce a tool that can predict synthetic routes but in a reasonable time frame for many real-world applications.
 ## Description
