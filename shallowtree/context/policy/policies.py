@@ -4,11 +4,7 @@ from typing import TYPE_CHECKING
 
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.policy.expansion_strategies import (
-    ExpansionStrategy,
-    TemplateBasedExpansionStrategy,
-)
-from shallowtree.context.policy.expansion_strategies import (
-    __name__ as expansion_strategy_module,
+    __name__ as expansion_strategy_module, ExpansionStrategy,
 )
 from shallowtree.context.policy.filter_strategies import (
     FILTER_STRATEGY_ALIAS,
@@ -18,13 +14,14 @@ from shallowtree.context.policy.filter_strategies import (
 from shallowtree.context.policy.filter_strategies import (
     __name__ as filter_strategy_module,
 )
+from shallowtree.context.policy.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 from shallowtree.utils.exceptions import PolicyException
 from shallowtree.utils.loading import load_dynamic_class
 
 if TYPE_CHECKING:
     from shallowtree.chem import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
-    from shallowtree.context.config import Configuration
+    # from shallowtree.context.config import Configuration
     from shallowtree.utils.type_utils import Any, Dict, List, Sequence, Tuple
 
 
@@ -39,7 +36,7 @@ class ExpansionPolicy(ContextCollection):
 
     _collection_name = "expansion policy"
 
-    def __init__(self, config: Configuration):
+    def __init__(self, config: "Configuration"):
         super().__init__()
         self._config = config
 
@@ -149,7 +146,7 @@ class FilterPolicy(ContextCollection):
 
     _collection_name = "filter policy"
 
-    def __init__(self, config: Configuration):
+    def __init__(self, config: "Configuration"):
         super().__init__()
         self._config = config
 

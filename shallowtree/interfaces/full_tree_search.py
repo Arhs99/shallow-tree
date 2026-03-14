@@ -17,18 +17,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rdkit import Chem
 import pandas as pd
+from rdkit import Chem
 
 from shallowtree.chem import Molecule, TreeMolecule
 from shallowtree.context.config import Configuration
-from shallowtree.context.policy.expansion_strategies import TemplateRules
+from shallowtree.context.policy.template_rules import TemplateRules
 from shallowtree.tools.profile_search import timer
-
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
 
@@ -68,6 +66,9 @@ class Expander:
         self.solved = dict()
         self._profiling = False
         self._timers = {}
+        self.BBs = []
+        self._counter = 0
+        self._cache_counter = 0
 
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
