@@ -1,0 +1,11 @@
+{
+	"configuration_yml_path": "/home/patronov/data/synth/config.yml",
+	"output_path": "/home/patronov/data/test/synth.output.csv",
+	"scaffold":"[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
+	"routes":true,
+	"depth":2,
+	"smiles": [
+		"Clc1ccccc1COC5CC(Nc3n[nH]c4cc(c2ccccc2)ccc34)C5",
+		"CC(c2c[nH]c3cc(c1ccccc1)ccc23)C5CC(OCc4ccccc4Cl)C5"
+	]
+}

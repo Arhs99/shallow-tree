@@ -107,7 +107,7 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
         if ext not in [".h5", ".hdf5", ".csv"]:
             with open(path, "r") as fileobj:
                 inchis = fileobj.read().splitlines()
-            self._stock_inchikeys = set(inchis)
+            self._stock_inchikeys = frozenset(inchis)
             self._price_dict: StrDict = {}
             return
 
@@ -119,7 +119,7 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
                 usecols=[inchi_key_col, price_col] if price_col else [inchi_key_col],
             )
         inchis = stock_df[inchi_key_col].values
-        self._stock_inchikeys = set(inchis)
+        self._stock_inchikeys = frozenset(inchis)
 
         if price_col is None:
             self._price_dict = {}

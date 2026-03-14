@@ -13,22 +13,34 @@ import psutil
 import requests
 
 try:
-    import grpc
+    # import grpc
     import tensorflow as tf
     from google.protobuf.json_format import MessageToDict
 
     # pylint: disable=all
     from tensorflow.keras.metrics import top_k_categorical_accuracy
     from tensorflow.keras.models import load_model as load_keras_model
+    # from tensorflow_serving.apis import (
+    #     get_model_metadata_pb2,
+    #     predict_pb2,
+    #     prediction_service_pb2_grpc,
+    # )
+except ImportError as e:
+    SUPPORT_EXTERNAL_APIS = False
+    print(e)
+    print(80*"#")
+else:
+    SUPPORT_EXTERNAL_APIS = True
+
+try:
+    import grpc
     from tensorflow_serving.apis import (
         get_model_metadata_pb2,
         predict_pb2,
         prediction_service_pb2_grpc,
     )
 except ImportError:
-    SUPPORT_EXTERNAL_APIS = False
-else:
-    SUPPORT_EXTERNAL_APIS = True
+    pass
 
 
 from shallowtree.utils.exceptions import ExternalModelAPIError
@@ -73,6 +85,8 @@ def load_model(
     """
     if source.split(".")[-1] == "onnx":
         return LocalOnnxModel(source)
+
+    print(f'The value of SUPPORT_EXTERNAL_APIS: {SUPPORT_EXTERNAL_APIS}')
 
     if not SUPPORT_EXTERNAL_APIS:
         raise ValueError(
@@ -283,6 +297,8 @@ class ExternalModelViaGRPC:
         self._server = f'{TF_SERVING_HOST}:{TF_SERVING_GRPC_PORT}'
         self._model_name = name
         self._sig_def = self._get_sig_def()
+        self._channel = grpc.insecure_channel(self._server)
+        self._service = prediction_service_pb2_grpc.PredictionServiceStub(self._channel)
 
     def __len__(self) -> int:
         first_input_name = list(self._sig_def["inputs"].keys())[0]
@@ -303,14 +319,12 @@ class ExternalModelViaGRPC:
         :return: the vector of the output layer
         """
         input_tensors = self._make_payload(*args, **kwargs)
-        channel = grpc.insecure_channel(self._server)
-        service = prediction_service_pb2_grpc.PredictionServiceStub(channel)
         request = predict_pb2.PredictRequest()
         request.model_spec.name = self._model_name
         for name, tensor in input_tensors.items():
             request.inputs[name].CopyFrom(tensor)
         key = list(self._sig_def["outputs"].keys())[0]
-        return tf.make_ndarray(service.Predict(request, 10.0).outputs[key])
+        return tf.make_ndarray(self._service.Predict(request, 10.0).outputs[key])
 
     @_log_and_reraise_exceptions
     def _get_sig_def(self) -> dict:

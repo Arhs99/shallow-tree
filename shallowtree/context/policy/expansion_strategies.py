@@ -252,7 +252,7 @@ class TemplateRules(ExpansionStrategy):
             rules_csv, index_col=0, sep="\t"
         )
         self.template_column = "retro_template"
-        self.use_rdchiral = True
+        self.use_rdchiral = False
 
     def get_actions(
             self,
@@ -317,7 +317,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         self.template_column: str = kwargs.get("template_column", "retro_template")
         self.cutoff_cumulative: float = float(kwargs.get("cutoff_cumulative", 0.995))
         self.cutoff_number: int = int(kwargs.get("cutoff_number", 50))
-        self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", True))
+        self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", False))
         self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
         self.rescale_prior: bool = bool(kwargs.get("rescale_prior", False))
         self.chiral_fingerprints = bool(kwargs.get("chiral_fingerprints", False))
