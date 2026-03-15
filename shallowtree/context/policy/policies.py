@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from shallowtree.context.collection import ContextCollection
-from shallowtree.context.policy.expansion_strategies import (
+from shallowtree.context.expansion_strategies.expansion_strategies import (
     __name__ as expansion_strategy_module, ExpansionStrategy,
 )
 from shallowtree.context.policy.filter_strategies import (
@@ -14,7 +14,7 @@ from shallowtree.context.policy.filter_strategies import (
 from shallowtree.context.policy.filter_strategies import (
     __name__ as filter_strategy_module,
 )
-from shallowtree.context.policy.template_based_expansion_strategy import TemplateBasedExpansionStrategy
+from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 from shallowtree.utils.exceptions import PolicyException
 from shallowtree.utils.loading import load_dynamic_class
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from shallowtree.chem import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
     # from shallowtree.context.config import Configuration
-    from shallowtree.utils.type_utils import Any, Dict, List, Sequence, Tuple
+    from shallowtree.utils.type_utils import Any, List, Sequence, Tuple
 
 
 class ExpansionPolicy(ContextCollection):
@@ -208,9 +208,7 @@ class FilterPolicy(ContextCollection):
                     strategy_spec = FILTER_STRATEGY_ALIAS.get(
                         strategy_config["type"], strategy_config["type"]
                     )
-                    cls = load_dynamic_class(
-                        strategy_spec, filter_strategy_module, PolicyException
-                    )
+                    cls = load_dynamic_class(strategy_spec, filter_strategy_module, PolicyException)
                 kwargs = dict(strategy_config)
 
             if "type" in kwargs:

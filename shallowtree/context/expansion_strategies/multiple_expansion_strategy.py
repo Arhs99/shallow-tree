@@ -5,7 +5,7 @@ from typing import Any, List, Sequence, Optional, Tuple
 import numpy as np
 
 from shallowtree.chem import TreeMolecule, RetroReaction
-from shallowtree.context.policy.expansion_strategies import ExpansionStrategy
+from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 # from shallowtree.context.config import Configuration
 from shallowtree.utils.type_utils import StrDict
 

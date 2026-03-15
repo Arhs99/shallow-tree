@@ -5,7 +5,7 @@ from typing import Sequence, Optional, List
 import pandas as pd
 
 from shallowtree.chem import TreeMolecule, RetroReaction, TemplatedRetroReaction
-from shallowtree.context.policy.expansion_strategies import ExpansionStrategy
+from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 
 
 class TemplateRules(ExpansionStrategy):

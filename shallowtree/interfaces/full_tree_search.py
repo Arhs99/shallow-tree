@@ -25,7 +25,7 @@ from rdkit import Chem
 
 from shallowtree.chem import Molecule, TreeMolecule
 from shallowtree.context.config import Configuration
-from shallowtree.context.policy.template_rules import TemplateRules
+from shallowtree.context.expansion_strategies.template_rules import TemplateRules
 from shallowtree.tools.profile_search import timer
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
