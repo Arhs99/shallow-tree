@@ -29,9 +29,10 @@ class ExpansionPolicy(ContextCollection):
 
     _collection_name = "expansion policy"
 
-    def __init__(self, config: "Configuration"):
+    def __init__(self, source: ExpansionStrategy):
         super().__init__()
-        self._config = config
+        # self._config = config
+        self.load(source)
 
     def __call__(
         self,

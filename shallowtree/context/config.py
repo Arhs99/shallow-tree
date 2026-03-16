@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional
 import yaml
 
 from shallowtree.context.policy.expansion_policy import ExpansionPolicy
-from shallowtree.context.policy.filter_policy import FilterPolicy
 from shallowtree.context.stock import Stock
 from shallowtree.utils.logging import logger
 
@@ -25,14 +24,14 @@ class Configuration:
     """
 
     stock: Stock = field(init=False)
-    expansion_policy: ExpansionPolicy = field(init=False)
-    filter_policy: FilterPolicy = field(init=False)
+    # expansion_policy: ExpansionPolicy = field(init=False)
+    # filter_policy: FilterPolicy = field(init=False)
     redis_cache: Optional["RedisCache"] = field(init=False, default=None)
 
     def __post_init__(self):
         self.stock = Stock()
-        self.expansion_policy = ExpansionPolicy(self)
-        self.filter_policy = FilterPolicy(self)
+        # self.expansion_policy = ExpansionPolicy(self)
+        # self.filter_policy = FilterPolicy(self)
         self._logger = logger()
 
     def __eq__(self, other: Any) -> bool:
@@ -56,15 +55,15 @@ class Configuration:
         :param source: the dictionary source
         :return: a Configuration object with settings from the source
         """
-        expansion_config = source.pop("expansion", {})
-        filter_config = source.pop("filter", {})
+        # expansion_config = source.pop("expansion", {})
+        # filter_config = source.pop("filter", {})
         stock_config = source.pop("stock", {})
         cache_config = source.pop("cache", {})
 
         config_obj = Configuration()
 
-        config_obj.expansion_policy.load_from_config(**expansion_config)
-        config_obj.filter_policy.load_from_config(**filter_config)
+        # config_obj.expansion_policy.load_from_config(**expansion_config)
+        # config_obj.filter_policy.load_from_config(**filter_config)
         config_obj.stock.load_from_config(**stock_config)
 
         # Initialize Redis cache if configured and enabled
@@ -82,7 +81,7 @@ class Configuration:
         return config_obj
 
     @classmethod
-    def from_file(cls, filename: str) -> "Configuration":
+    def from_file(cls, filename: str) -> StrDict:
         """
         Loads a configuration from a yaml file.
         The parameters not set in the yaml file are taken from the default values.
@@ -104,4 +103,5 @@ class Configuration:
                 raise ValueError(f"'{item[2:-1]}' not in environment variables")
             txt = txt.replace(item, os.environ[item[2:-1]])
         _config = yaml.load(txt, Loader=yaml.SafeLoader)
-        return Configuration.from_dict(_config)
+        return _config
+        # return Configuration.from_dict(_config)

@@ -26,6 +26,8 @@ from rdkit import Chem
 from shallowtree.chem import Molecule, TreeMolecule
 from shallowtree.context.config import Configuration
 from shallowtree.context.expansion_strategies.template_rules import TemplateRules
+from shallowtree.context.policy.expansion_strategy_factory import ExpansionStrategyFactory
+from shallowtree.context.policy.filter_strategy_factory import FilterStrategyFactory
 from shallowtree.tools.profile_search import timer
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
@@ -50,15 +52,25 @@ class Expander:
         self._logger = logger()
 
         if configfile:
-            self.config = Configuration.from_file(configfile)
+            config_dict = Configuration.from_file(configfile)
+
+            filter_config = config_dict.pop("filter", {})
+            filter_policy = FilterStrategyFactory.load_from_config(**filter_config)
+            self.filter_policy = filter_policy
+
+            expansion_config = config_dict.pop("expansion", {})
+            expansion_policy = ExpansionStrategyFactory.load_from_config(**expansion_config)
+            self.expansion_policy = expansion_policy
+
+            self.config = Configuration.from_dict(config_dict)
         elif configdict:
             self.config = Configuration.from_dict(configdict)
         else:
             self.config = Configuration()
 
-        self.expansion_policy = self.config.expansion_policy
+        # self.expansion_policy = self.config.expansion_policy
         self.rules_expansion = TemplateRules(extra_template_path)
-        self.filter_policy = self.config.filter_policy
+        # self.filter_policy = self.config.filter_policy
         self.stock = self.config.stock
         self.redis_cache = self.config.redis_cache
         self.max_depth = 2

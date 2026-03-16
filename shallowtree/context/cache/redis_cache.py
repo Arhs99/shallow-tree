@@ -26,6 +26,7 @@ class RedisCache:
     def __init__(
         self,
         config: "Configuration",
+        filter_policy,
         host: str = "localhost",
         port: int = 6379,
         db: int = 0,
@@ -53,7 +54,7 @@ class RedisCache:
             )
 
         self._config = config
-        self._config_hash = self._compute_config_hash()
+        self._config_hash = self._compute_config_hash(filter_policy)
 
         try:
             self._client = redis.Redis(
@@ -71,7 +72,7 @@ class RedisCache:
         except redis.AuthenticationError as e:
             raise CacheException(f"Redis authentication failed: {e}")
 
-    def _compute_config_hash(self) -> str:
+    def _compute_config_hash(self, filter_policy) -> str:
         """Compute deterministic hash of config fields that affect search results.
 
         Uses policy/stock key names and relevant settings to create a unique
@@ -86,7 +87,7 @@ class RedisCache:
             hash_data[f"expansion.{name}.cutoff"] = getattr(strategy, "cutoff_number", 50)
 
         # Filter policy - use key names and filter cutoff
-        for name, strategy in self._config.filter_policy._items.items():
+        for name, strategy in filter_policy._items.items():
             hash_data[f"filter.{name}"] = name
             hash_data[f"filter.{name}.cutoff"] = getattr(strategy, "filter_cutoff", 0.05)
 
