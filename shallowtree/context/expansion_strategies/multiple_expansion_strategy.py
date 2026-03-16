@@ -116,14 +116,10 @@ class MultiExpansionStrategy(ExpansionStrategy):
             self._config.expansion_policy[key] for key in self.expansion_strategy_keys
         ]
 
-        for expansion_strategy, weight in zip(
-            self._expansion_strategies, self.expansion_strategy_weights
-        ):
+        for expansion_strategy, weight in zip(self._expansion_strategies, self.expansion_strategy_weights):
             if not getattr(expansion_strategy, "rescale_prior", True) and weight < 1:
                 setattr(expansion_strategy, "rescale_prior", True)
-                self._logger.info(
-                    f"Enforcing {expansion_strategy.key}.rescale_prior=True"
-                )
+                self._logger.info(f"Enforcing {expansion_strategy.key}.rescale_prior=True")
         return self._expansion_strategies
 
     def _prune_actions(
