@@ -1,16 +1,16 @@
 from typing import Any
+
+from shallowtree.context.expansion_strategies.expansion_strategies import (
+    __name__ as expansion_strategy_module, )
 from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 from shallowtree.utils.exceptions import PolicyException
-from shallowtree.context.expansion_strategies.expansion_strategies import (
-    __name__ as expansion_strategy_module, ExpansionStrategy,
-)
 from shallowtree.utils.loading import load_dynamic_class
 
 
 class ExpansionStrategyFactory:
 
     @staticmethod
-    def load_from_config(**config: Any) -> ExpansionStrategy:
+    def load_from_config(**config: Any):
         """
         Load one or more expansion policy from a configuration
 

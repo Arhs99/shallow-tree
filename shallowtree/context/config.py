@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 
 import yaml
 
-from shallowtree.context.policy.expansion_policy import ExpansionPolicy
 from shallowtree.context.stock import Stock
 from shallowtree.utils.logging import logger
 
