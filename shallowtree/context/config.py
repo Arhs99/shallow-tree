@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 
 import yaml
 
-from shallowtree.context.stock import Stock
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
@@ -22,13 +21,13 @@ class Configuration:
     the stock, the loaded scorers and various parameters.
     """
 
-    stock: Stock = field(init=False)
+    # stock: Stock = field(init=False)
     # expansion_policy: ExpansionPolicy = field(init=False)
     # filter_policy: FilterPolicy = field(init=False)
     redis_cache: Optional["RedisCache"] = field(init=False, default=None)
 
     def __post_init__(self):
-        self.stock = Stock()
+        # self.stock = Stock()
         # self.expansion_policy = ExpansionPolicy(self)
         # self.filter_policy = FilterPolicy(self)
         self._logger = logger()
@@ -56,14 +55,14 @@ class Configuration:
         """
         # expansion_config = source.pop("expansion", {})
         # filter_config = source.pop("filter", {})
-        stock_config = source.pop("stock", {})
+        # stock_config = source.pop("stock", {})
         cache_config = source.pop("cache", {})
 
         config_obj = Configuration()
 
         # config_obj.expansion_policy.load_from_config(**expansion_config)
         # config_obj.filter_policy.load_from_config(**filter_config)
-        config_obj.stock.load_from_config(**stock_config)
+        # config_obj.stock.load_from_config(**stock_config)
 
         # Initialize Redis cache if configured and enabled
         if cache_config.get("enabled", False):

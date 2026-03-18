@@ -82,17 +82,17 @@ class RedisCache:
         hash_data = {}
 
         # Expansion policy - use key names and cutoff settings
-        for name, strategy in self._config.expansion_policy._items.items():
+        for name, strategy in self._config.expansion_policy._items.items(): #FIXME
             hash_data[f"expansion.{name}"] = name
             hash_data[f"expansion.{name}.cutoff"] = getattr(strategy, "cutoff_number", 50)
 
         # Filter policy - use key names and filter cutoff
-        for name, strategy in filter_policy._items.items():
+        for name, strategy in filter_policy._items.items(): #FIXME
             hash_data[f"filter.{name}"] = name
             hash_data[f"filter.{name}.cutoff"] = getattr(strategy, "filter_cutoff", 0.05)
 
         # Stock - use key names
-        for name in self._config.stock._items.keys():
+        for name in self._config.stock._items.keys(): #FIXME
             hash_data[f"stock.{name}"] = name
 
         # Create deterministic hash

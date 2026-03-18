@@ -30,6 +30,7 @@ from shallowtree.context.policy.expansion_policy import ExpansionPolicy
 from shallowtree.context.policy.expansion_strategy_factory import ExpansionStrategyFactory
 from shallowtree.context.policy.filter_policy import FilterPolicy
 from shallowtree.context.policy.filter_strategy_factory import FilterStrategyFactory
+from shallowtree.context.stock.stock import Stock
 from shallowtree.tools.profile_search import timer
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
@@ -66,6 +67,11 @@ class Expander:
             expansion_policy = ExpansionPolicy(expansion_strategy)
             self.expansion_policy = expansion_policy
 
+            stock_config = config_dict.pop("stock", {})
+            stock = Stock()
+            stock.load_from_config(**stock_config)
+            self.stock = stock
+
             self.config = Configuration.from_dict(config_dict)
         elif configdict:
             self.config = Configuration.from_dict(configdict)
@@ -75,7 +81,7 @@ class Expander:
         # self.expansion_policy = self.config.expansion_policy
         self.rules_expansion = TemplateRules(extra_template_path)
         # self.filter_policy = self.config.filter_policy
-        self.stock = self.config.stock
+        # self.stock = self.config.stock
         self.redis_cache = self.config.redis_cache
         self.max_depth = 2
         self.cache = dict()
