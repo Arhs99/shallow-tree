@@ -18,12 +18,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 import pandas as pd
 from rdkit import Chem
 
 from shallowtree.chem import Molecule, TreeMolecule
+from shallowtree.context.cache.redis_cache import RedisCache
 from shallowtree.context.config import Configuration
 from shallowtree.context.expansion_strategies.template_rules import TemplateRules
 from shallowtree.context.policy.expansion_policy import ExpansionPolicy
@@ -49,40 +50,17 @@ class Expander:
     """
     """
 
-    def __init__(
-            self, configfile: Optional[str] = None, configdict: Optional[StrDict] = None
-    ):
+    def __init__(self, configfile: Optional[str] = None, configdict: Optional[StrDict] = None ):
         self._logger = logger()
 
-        if configfile:
-            config_dict = Configuration.from_file(configfile)
+        config_dict = Configuration.from_file(configfile)
+        self.filter_policy = self._setup_filter_policy(config_dict)
+        self.expansion_policy = self._setup_expansion_policy(config_dict)
+        self.stock = self._setup_stock(config_dict)
+        self.redis_cache = self._setup_redis_cache(config_dict)
 
-            filter_config = config_dict.pop("filter", {})
-            filter_strategy = FilterStrategyFactory.load_from_config(**filter_config)
-            filter_policy = FilterPolicy(filter_strategy)
-            self.filter_policy = filter_policy
 
-            expansion_config = config_dict.pop("expansion", {})
-            expansion_strategy = ExpansionStrategyFactory.load_from_config(**expansion_config)
-            expansion_policy = ExpansionPolicy(expansion_strategy)
-            self.expansion_policy = expansion_policy
-
-            stock_config = config_dict.pop("stock", {})
-            stock = Stock()
-            stock.load_from_config(**stock_config)
-            self.stock = stock
-
-            self.config = Configuration.from_dict(config_dict)
-        elif configdict:
-            self.config = Configuration.from_dict(configdict)
-        else:
-            self.config = Configuration()
-
-        # self.expansion_policy = self.config.expansion_policy
         self.rules_expansion = TemplateRules(extra_template_path)
-        # self.filter_policy = self.config.filter_policy
-        # self.stock = self.config.stock
-        self.redis_cache = self.config.redis_cache
         self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
@@ -159,11 +137,7 @@ class Expander:
         df = pd.DataFrame(rows)
         return df
 
-    def search_tree(
-            self,
-            smiles: List[str],
-            max_depth=2
-    ) -> pd.DataFrame:
+    def search_tree(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
         """
         """
         self.max_depth = max_depth
@@ -352,3 +326,38 @@ class Expander:
             if inchi_key in self.cache:
                 depth, cache_score = self.cache[inchi_key]
                 self.redis_cache.set_cache(inchi_key, depth, cache_score)
+
+    def _setup_redis_cache(self, config_dict: Dict):
+        cache_config = config_dict.pop("cache", {})
+        if cache_config.get("enabled", False):
+            redis_cache = RedisCache(
+                host=cache_config.get("host", "localhost"),
+                port=cache_config.get("port", 6379),
+                db=cache_config.get("db", 0),
+                password=cache_config.get("password"),
+                socket_timeout=cache_config.get("socket_timeout", 5.0),
+                filter_policy=self.filter_policy,
+                expansion_policy=self.expansion_policy,
+                stock=self.stock
+            )
+            return redis_cache
+        else:
+            return None
+
+    def _setup_stock(self, config_dict: Dict):
+        stock_config = config_dict.pop("stock", {})
+        stock = Stock()
+        stock.load_from_config(**stock_config)
+        return stock
+
+    def _setup_expansion_policy(self, config_dict: Dict):
+        expansion_config = config_dict.pop("expansion", {})
+        expansion_strategy = ExpansionStrategyFactory.load_from_config(**expansion_config)
+        expansion_policy = ExpansionPolicy(expansion_strategy)
+        return expansion_policy
+
+    def _setup_filter_policy(self, config_dict: Dict):
+        filter_config = config_dict.pop("filter", {})
+        filter_strategy = FilterStrategyFactory.load_from_config(**filter_config)
+        filter_policy = FilterPolicy(filter_strategy)
+        return filter_policy

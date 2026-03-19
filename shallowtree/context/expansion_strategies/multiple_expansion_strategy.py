@@ -6,10 +6,10 @@ import numpy as np
 
 from shallowtree.chem import TreeMolecule, RetroReaction
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
-# from shallowtree.context.config import Configuration
 from shallowtree.utils.type_utils import StrDict
 
 
+#FIXME this class is currently broken due to entanglement with Config
 class MultiExpansionStrategy(ExpansionStrategy):
     """
     A base class for combining multiple expansion strategies.

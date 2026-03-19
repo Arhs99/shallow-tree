@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import List
 
 from shallowtree.configs.input_configuration import InputConfiguration
 from shallowtree.interfaces.full_tree_search import Expander
@@ -34,10 +35,11 @@ def read_json_file(path: str):
     except (ValueError, KeyError, TypeError) as e:
         print(f"JSON format error in file ${path}: \n ${e}")
 
+def canonicalize_input(smiles_list: List[str]) -> List[str]:
+    smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles_list if Chem.MolFromSmiles(x) is not None]
+    return smiles
 
 def main():
-    # smiles = [x.strip() for x in sys.stdin]
-    # smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles if Chem.MolFromSmiles(x) is not None]
     config_path = sys.argv[1]
     config_dict = read_json_file(config_path)
     input_config = InputConfiguration(**config_dict)
