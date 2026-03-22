@@ -16,9 +16,7 @@ class TemplateRules(ExpansionStrategy):
         self.use_rdchiral = False
 
     def get_actions(
-            self,
-            molecules: Sequence[TreeMolecule],
-            cache_molecules: Optional[Sequence[TreeMolecule]] = None,
+            self, molecules: Sequence[TreeMolecule], cache_molecules: Optional[Sequence[TreeMolecule]] = None,
     ) -> List[RetroReaction]:
         possible_actions = []
 
@@ -31,12 +29,7 @@ class TemplateRules(ExpansionStrategy):
                 metadata["policy_name"] = 'rules'
                 metadata["template_code"] = move_index
                 metadata["template"] = move[self.template_column]
-                possible_actions.append(
-                    TemplatedRetroReaction(
-                        mol,
-                        smarts=move[self.template_column],
-                        metadata=metadata,
-                        use_rdchiral=self.use_rdchiral,
-                    )
-                )
+                template = TemplatedRetroReaction(mol, smarts=move[self.template_column], metadata=metadata,
+                                                  use_rdchiral=self.use_rdchiral)
+                possible_actions.append(template)
         return possible_actions

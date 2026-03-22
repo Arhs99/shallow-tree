@@ -6,10 +6,10 @@ import numpy as np
 
 from shallowtree.chem import TreeMolecule, RetroReaction
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
-# from shallowtree.context.config import Configuration
 from shallowtree.utils.type_utils import StrDict
 
 
+#FIXME this class is currently broken due to entanglement with Config
 class MultiExpansionStrategy(ExpansionStrategy):
     """
     A base class for combining multiple expansion strategies.
@@ -82,9 +82,7 @@ class MultiExpansionStrategy(ExpansionStrategy):
         for expansion_strategy, expansion_strategy_weight in zip(
             expansion_strategies, self.expansion_strategy_weights
         ):
-            possible_actions, priors = expansion_strategy.get_actions(
-                molecules, cache_molecules
-            )
+            possible_actions, priors = expansion_strategy.get_actions(molecules, cache_molecules)
 
             all_possible_actions.extend(possible_actions)
             if not self.additive_expansion and all_possible_actions:
@@ -104,17 +102,12 @@ class MultiExpansionStrategy(ExpansionStrategy):
         if self._expansion_strategies:
             return self._expansion_strategies
 
-        if not all(
-            key in self._config.expansion_policy.items
-            for key in self.expansion_strategy_keys
-        ):
+        if not all(key in self._config.expansion_policy.items for key in self.expansion_strategy_keys):
             raise ValueError(
                 "The input expansion strategy keys must exist in the "
                 "expansion policies listed in config"
             )
-        self._expansion_strategies = [
-            self._config.expansion_policy[key] for key in self.expansion_strategy_keys
-        ]
+        self._expansion_strategies = [self._config.expansion_policy[key] for key in self.expansion_strategy_keys]
 
         for expansion_strategy, weight in zip(self._expansion_strategies, self.expansion_strategy_weights):
             if not getattr(expansion_strategy, "rescale_prior", True) and weight < 1:

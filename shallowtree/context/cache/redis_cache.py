@@ -11,7 +11,6 @@ from shallowtree.chem import TreeMolecule
 from shallowtree.utils.exceptions import CacheException
 
 if TYPE_CHECKING:
-    from shallowtree.context.config import Configuration
     from shallowtree.utils.type_utils import Dict, List, Optional, Tuple
 
 
@@ -25,7 +24,9 @@ class RedisCache:
 
     def __init__(
         self,
-        config: "Configuration",
+        filter_policy,
+        expansion_policy,
+        stock,
         host: str = "localhost",
         port: int = 6379,
         db: int = 0,
@@ -52,8 +53,7 @@ class RedisCache:
                 "redis package not installed. Install with: poetry install -E cache"
             )
 
-        self._config = config
-        self._config_hash = self._compute_config_hash()
+        self._config_hash = self._compute_config_hash(filter_policy, expansion_policy, stock)
 
         try:
             self._client = redis.Redis(
@@ -71,7 +71,7 @@ class RedisCache:
         except redis.AuthenticationError as e:
             raise CacheException(f"Redis authentication failed: {e}")
 
-    def _compute_config_hash(self) -> str:
+    def _compute_config_hash(self, filter_policy, expansion_policy, stock) -> str:
         """Compute deterministic hash of config fields that affect search results.
 
         Uses policy/stock key names and relevant settings to create a unique
@@ -81,17 +81,17 @@ class RedisCache:
         hash_data = {}
 
         # Expansion policy - use key names and cutoff settings
-        for name, strategy in self._config.expansion_policy._items.items():
+        for name, strategy in expansion_policy._items.items(): #FIXME
             hash_data[f"expansion.{name}"] = name
             hash_data[f"expansion.{name}.cutoff"] = getattr(strategy, "cutoff_number", 50)
 
         # Filter policy - use key names and filter cutoff
-        for name, strategy in self._config.filter_policy._items.items():
+        for name, strategy in filter_policy._items.items(): #FIXME
             hash_data[f"filter.{name}"] = name
             hash_data[f"filter.{name}.cutoff"] = getattr(strategy, "filter_cutoff", 0.05)
 
         # Stock - use key names
-        for name in self._config.stock._items.keys():
+        for name in stock._items.keys(): #FIXME
             hash_data[f"stock.{name}"] = name
 
         # Create deterministic hash
