@@ -4,21 +4,13 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Sequence, Optional, Tuple
 
-from shallowtree.utils.exceptions import PolicyException
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
     from shallowtree.chem import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
-    from shallowtree.context.config import Configuration
-    from shallowtree.utils.type_utils import (
-        List,
-        Optional,
-        Sequence,
-        Tuple,
-    )
 
 
 class ExpansionStrategy(abc.ABC):
@@ -40,13 +32,7 @@ class ExpansionStrategy(abc.ABC):
 
     _required_kwargs: List[str] = []
 
-    def __init__(self, key: str, config: Configuration, **kwargs: str):
-        if any(name not in kwargs for name in self._required_kwargs):
-            raise PolicyException(
-                f"A {self.__class__.__name__} class needs to be initiated "
-                f"with keyword arguments: {', '.join(self._required_kwargs)}"
-            )
-        self._config = config
+    def __init__(self, key: str):
         self._logger = logger()
         self.key = key
 

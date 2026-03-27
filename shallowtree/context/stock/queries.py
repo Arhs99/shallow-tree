@@ -11,12 +11,8 @@ import pandas as pd
 
 from shallowtree.chem import Molecule
 from shallowtree.utils.exceptions import StockException
-# from shallow-tree.utils.mongo import get_mongo_client
 
 if TYPE_CHECKING:
-    from pymongo.collection import Collection as MongoCollection
-    from pymongo.database import Database as MongoDatabase
-
     from shallowtree.utils.type_utils import Optional, Set, StrDict
 
 
@@ -97,12 +93,7 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
     :paramater price_col: the name of the column with the optional prices
     """
 
-    def __init__(
-        self,
-        path: str,
-        inchi_key_col: str = "inchi_key",
-        price_col: Optional[str] = None,
-    ) -> None:
+    def __init__(self, path: str, inchi_key_col: str = "inchi_key", price_col: Optional[str] = None) -> None:
         ext = os.path.splitext(path)[1]
         if ext not in [".h5", ".hdf5", ".csv"]:
             with open(path, "r") as fileobj:

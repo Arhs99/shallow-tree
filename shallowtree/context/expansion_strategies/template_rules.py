@@ -10,7 +10,7 @@ from shallowtree.context.expansion_strategies.expansion_strategies import Expans
 
 class TemplateRules(ExpansionStrategy):
     def __init__(self, rules_csv: str):
-        super().__init__(None, None)
+        super().__init__("retro_template")
         self.templates: pd.DataFrame = pd.read_csv(rules_csv, index_col=0, sep="\t")
         self.template_column = "retro_template"
         self.use_rdchiral = False

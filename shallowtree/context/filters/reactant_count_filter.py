@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
 
 from shallowtree.chem import RetroReaction, TemplatedRetroReaction
+from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.utils.exceptions import RejectionException
 
@@ -15,8 +15,8 @@ class ReactantsCountFilter(FilterStrategy):
     :param config: the configuration of the tree search
     """
 
-    def __init__(self, key: str, config: "Configuration", **kwargs: Any) -> None:
-        super().__init__(key, config, **kwargs)
+    def __init__(self, key: str, config: FilterConfiguration) -> None:
+        super().__init__(key)
         self._logger.info(f"Loading reactants count filter to {key}")
 
     def apply(self, reaction: RetroReaction) -> None:

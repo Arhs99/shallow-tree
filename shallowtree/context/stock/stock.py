@@ -7,15 +7,13 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from shallowtree.chem import Molecule
+from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.stock.queries import (
     InMemoryInchiKeyQuery,
-    STOCK_QUERY_ALIAS,
     StockQueryMixin,
 )
-from shallowtree.context.stock.queries import __name__ as queries_module
 from shallowtree.utils.exceptions import StockException
-from shallowtree.utils.loading import load_dynamic_class
 
 if TYPE_CHECKING:
     from shallowtree.utils.type_utils import (
@@ -153,7 +151,7 @@ class Stock(ContextCollection):
         self._logger.info(f"Loading stock from {source.__class__.__name__} to {key}")
         self._items[key] = source
 
-    def load_from_config(self, **config: Any) -> None:
+    def load_from_config(self, config: StockConfiguration) -> None:
         """
         Load one or more stock queries from a configuration
 
@@ -170,32 +168,11 @@ class Stock(ContextCollection):
 
         :param config: the configuration
         """
-        if "stop_criteria" in config:
-            self.set_stop_criteria(config["stop_criteria"])
+        self.set_stop_criteria(config.stop_criteria)
+        obj = InMemoryInchiKeyQuery(path=config.dataset, inchi_key_col=config.inchi_key_col, price_col=config.price_col)
+        key = 'inchiset'
+        self.load(obj, key)
 
-        for key, stock_config in config.items():
-            if key == "stop_criteria":
-                continue
-
-            if not isinstance(stock_config, dict):
-                kwargs = {"path": stock_config}
-                cls = InMemoryInchiKeyQuery
-            else:
-                if "type" not in stock_config or stock_config["type"] == "inchiset":
-                    cls = InMemoryInchiKeyQuery
-                else:
-                    stock_query = STOCK_QUERY_ALIAS.get(
-                        stock_config["type"], stock_config["type"]
-                    )
-                    cls = load_dynamic_class(
-                        stock_query, queries_module, StockException
-                    )
-                kwargs = dict(stock_config)
-
-            if "type" in kwargs:
-                del kwargs["type"]
-            obj = cls(**kwargs)
-            self.load(obj, key)
 
     def price(self, mol: Molecule) -> float:
         """

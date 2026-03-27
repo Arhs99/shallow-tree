@@ -5,6 +5,7 @@ from typing import List, Any, Tuple
 import numpy as np
 
 from shallowtree.chem import RetroReaction
+from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.context.policy.utils import _make_fingerprint
 from shallowtree.utils.exceptions import RejectionException
@@ -26,17 +27,16 @@ class QuickKerasFilter(FilterStrategy):
 
     _required_kwargs: List[str] = ["model"]
 
-    def __init__(self, key: str, config: "Configuration", **kwargs: Any) -> None:
-        super().__init__(key, config, **kwargs)
-        source = kwargs["model"]
-        # self.settings = self._config.filter_settings
+    def __init__(self, key: str, config: FilterConfiguration) -> None:
+        super().__init__(key)
+        source = config.model
         self._logger.info(f"Loading filter policy model from {source} to {key}")
-        self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
+        self.use_remote_models: bool = config.use_remote_models
         self.model = load_model(source, key, self.use_remote_models)
-        self._prod_fp_name = kwargs.get("prod_fp_name", "input_1")
-        self._rxn_fp_name = kwargs.get("rxn_fp_name", "input_2")
-        self._exclude_from_policy: List[str] = kwargs.get("exclude_from_policy", [])
-        self.filter_cutoff: float = float(kwargs.get("filter_cutoff", 0.05))
+        self._prod_fp_name = config.prod_fp_name
+        self._rxn_fp_name = config.rxn_fp_name
+        self._exclude_from_policy: List[str] = config.exclude_from_policy
+        self.filter_cutoff: float = config.filter_cutoff
 
     def apply(self, reaction: RetroReaction) -> None:
         if reaction.metadata.get("policy_name", "") in self._exclude_from_policy:

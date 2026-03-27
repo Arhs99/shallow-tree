@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from shallowtree.chem import TreeMolecule, RetroReaction, TemplatedRetroReaction
+from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
-# from shallowtree.context.config import Configuration
 from shallowtree.context.policy.utils import _make_fingerprint
 from shallowtree.utils.exceptions import PolicyException
 from shallowtree.utils.models import load_model
@@ -35,41 +35,27 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         number of templates
     """
 
-    _required_kwargs = [
-        "model",
-        "template",
-    ]
+    def __init__(self, key: str, config: ExpansionConfiguration) -> None:
+        super().__init__(key)
 
-    def __init__(self, key: str, config: "Configuration", **kwargs: str) -> None:
-        super().__init__(key, config, **kwargs)
+        self.template_column: str = config.template_column
+        self.cutoff_cumulative: float = config.cutoff_cumulative
+        self.cutoff_number: int = config.cutoff_number
+        self.use_rdchiral: bool = config.use_rdchiral
+        self.use_remote_models: bool = config.use_remote_models
+        self.rescale_prior: bool = config.rescale_prior
+        self.chiral_fingerprints = config.chiral_fingerprints
 
-        source = kwargs["model"]
-        templatefile = kwargs["template"]
-        maskfile: str = kwargs.get("mask", "")
-        self.template_column: str = kwargs.get("template_column", "retro_template")
-        self.cutoff_cumulative: float = float(kwargs.get("cutoff_cumulative", 0.995))
-        self.cutoff_number: int = int(kwargs.get("cutoff_number", 50))
-        self.use_rdchiral: bool = bool(kwargs.get("use_rdchiral", False))
-        self.use_remote_models: bool = bool(kwargs.get("use_remote_models", False))
-        self.rescale_prior: bool = bool(kwargs.get("rescale_prior", False))
-        self.chiral_fingerprints = bool(kwargs.get("chiral_fingerprints", False))
+        self._logger.info(f"Loading template-based expansion policy model from {config.model} to {self.key}")
+        self.model = load_model(config.model, self.key, self.use_remote_models)
 
-        self._logger.info(
-            f"Loading template-based expansion policy model from {source} to {self.key}"
-        )
-        self.model = load_model(source, self.key, self.use_remote_models)
-
-        self._logger.info(f"Loading templates from {templatefile} to {self.key}")
-        if templatefile.endswith(".csv.gz") or templatefile.endswith(".csv"):
-            self.templates: pd.DataFrame = pd.read_csv(
-                templatefile, index_col=0, sep="\t"
-            )
+        self._logger.info(f"Loading templates from {config.template} to {self.key}")
+        if config.template.endswith(".csv.gz") or config.template.endswith(".csv"):
+            self.templates: pd.DataFrame = pd.read_csv(config.template, index_col=0, sep="\t")
         else:
-            self.templates = pd.read_hdf(templatefile, "table")
+            self.templates = pd.read_hdf(config.template, "table")
 
-        self.mask: Optional[np.ndarray] = (
-            self._load_mask_file(maskfile) if maskfile else None
-        )
+        self.mask: Optional[np.ndarray] = (self._load_mask_file(config.mask) if config.mask else None)
 
         if hasattr(self.model, "output_size") and len(self.templates) != self.model.output_size:  # type: ignore
             raise PolicyException(
