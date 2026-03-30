@@ -4,16 +4,12 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+from typing import Dict, Optional, Any, Set
 
 import pandas as pd
 
-
 from shallowtree.chem import Molecule
 from shallowtree.utils.exceptions import StockException
-
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import Optional, Set, StrDict
 
 
 class StockQueryMixin:
@@ -99,7 +95,7 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
             with open(path, "r") as fileobj:
                 inchis = fileobj.read().splitlines()
             self._stock_inchikeys = frozenset(inchis)
-            self._price_dict: StrDict = {}
+            self._price_dict: Dict[str, Any] = {}
             return
 
         if ext in [".h5", ".hdf5"]:

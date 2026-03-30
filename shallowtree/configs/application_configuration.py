@@ -13,3 +13,4 @@ class ApplicationConfiguration(BaseModel):
     filter: FilterConfiguration
     stock: StockConfiguration
     cache: CacheConfiguration
+    extra_template_path: str|None = None

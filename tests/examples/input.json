@@ -1,5 +1,5 @@
 {
-	"configuration_yml_path": "/home/patronov/data/synth/config.yml",
+	"configuration_yml_path": "/home/patronov/data/synth/config.json",
 	"output_path": "/home/patronov/data/test/synth.output.csv",
 	"scaffold":"[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
 	"routes":true,

@@ -4,7 +4,7 @@ from shallowtree.configs.input_configuration import InputConfiguration
 from shallowtree.interfaces.full_tree_search import Expander
 
 
-class TestMultiDimensions(unittest.TestCase):
+class TestStandardRuns(unittest.TestCase):
 
     def setUp(self):
         smiles = [

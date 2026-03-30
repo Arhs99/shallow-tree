@@ -26,11 +26,8 @@ class ExpansionPolicy(ContextCollection):
         super().__init__()
         self.load(source)
 
-    def get_actions(
-        self,
-        molecules: Sequence[TreeMolecule],
-        cache_molecules: Sequence[TreeMolecule] = None,
-    ) -> Tuple[List[RetroReaction], List[float]]:
+    def get_actions(self, molecules: Sequence[TreeMolecule], cache_molecules: Sequence[TreeMolecule] = None, ) \
+            -> Tuple[List[RetroReaction], List[float]]:
         """
         Get all the probable actions of a set of molecules, using the selected policies
 
