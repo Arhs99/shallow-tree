@@ -310,7 +310,7 @@ class Expander:
     def _save_to_redis(self) -> None:
         """Persist all solved routes to Redis."""
         if self.redis_cache:
-            for inchi_key, (reactants, score, classification) in self.solved.items():
+            for inchi_key, (reactants, score, classification) in list(self.solved.items()):
                 self.redis_cache.set_solved(inchi_key, reactants, score, classification)
                 if inchi_key in self.cache:
                     depth, cache_score = self.cache[inchi_key]
