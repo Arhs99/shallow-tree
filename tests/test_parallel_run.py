@@ -38,6 +38,5 @@ class TestParallelRuns(unittest.TestCase):
 
     def test_sequential_search(self):
         config = self.config
-        print(vars(config))
         result = standard_search(config)
         print(result)
