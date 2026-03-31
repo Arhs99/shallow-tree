@@ -10,3 +10,4 @@ class InputConfiguration:
     smiles: List[str] = field(default_factory=list)
     routes: bool = True
     depth: int = 2
+    parallel_processes: int = 1
