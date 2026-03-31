@@ -14,10 +14,10 @@ class TestStandardRuns(unittest.TestCase):
             "CC(C)(C)c1cc2c(N/N=C\c3cccc(CN)n3)ncnc2s1",
             "COc1cccc2c1c(Cl)c1c3c(cc(O)c(O)c32)C(=O)N1",
 	    ]
-        self.config = InputConfiguration(configuration_yml_path="/home/patronov/data/synth/config.yml",
+        self.config = InputConfiguration(app_configuration_path="/home/patronov/data/synth/config.yml",
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
                                          routes=True, depth=2, smiles=smiles, output_path="")
-        self.expander = Expander(configfile=self.config.configuration_yml_path)
+        self.expander = Expander(configfile=self.config.app_configuration_path)
         self.expander.expansion_policy.select_first()
         self.expander.filter_policy.select_first()
         self.expander.stock.select_first()

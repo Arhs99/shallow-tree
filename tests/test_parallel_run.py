@@ -20,10 +20,10 @@ class TestParallelRuns(unittest.TestCase):
             "CC(C)(C)c1cc2c(N/N=C\c3cccc(CN)n3)ncnc2s1",
             "COc1cccc2c1c(Cl)c1c3c(cc(O)c(O)c32)C(=O)N1",
         ]
-        self.config = InputConfiguration(configuration_yml_path="/home/patronov/data/synth/config.json",
+        self.config = InputConfiguration(app_configuration_path="/home/patronov/data/synth/config.json",
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
-                                         routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=1)
-        config_dict = Configuration.from_json(self.config.configuration_yml_path)
+                                         routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3)
+        config_dict = Configuration.from_json(self.config.app_configuration_path)
         self.app_config = ApplicationConfiguration(**config_dict)
 
     def test_parallel_scaffold_search(self):
@@ -38,5 +38,6 @@ class TestParallelRuns(unittest.TestCase):
 
     def test_sequential_search(self):
         config = self.config
+        print(vars(config))
         result = standard_search(config)
         print(result)

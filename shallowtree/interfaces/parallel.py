@@ -16,8 +16,9 @@ def clone_config(input_config: InputConfiguration, smiles:List[str]):
     clone.smiles = smiles
     return clone
 
+
 def standard_search(input_config: InputConfiguration):
-    config_dict = Configuration.from_json(input_config.configuration_yml_path)
+    config_dict = Configuration.from_json(input_config.app_configuration_path)
     app_config = ApplicationConfiguration(**config_dict)
     smiles = [input_config.smiles[i:i + input_config.parallel_processes]
               for i in range(0, len(input_config.smiles), input_config.parallel_processes)]
@@ -40,7 +41,7 @@ def standard_search(input_config: InputConfiguration):
 
 
 def scaffold_search(input_config: InputConfiguration):
-    config_dict = Configuration.from_json(input_config.configuration_yml_path)
+    config_dict = Configuration.from_json(input_config.app_configuration_path)
     app_config = ApplicationConfiguration(**config_dict)
     smiles = [input_config.smiles[i:i + input_config.parallel_processes]
               for i in range(0, len(input_config.smiles), input_config.parallel_processes)]
@@ -63,7 +64,7 @@ def scaffold_search(input_config: InputConfiguration):
 
 
 def sequential_search(input_config: InputConfiguration):
-    config_dict = Configuration.from_json(input_config.configuration_yml_path)
+    config_dict = Configuration.from_json(input_config.app_configuration_path)
     app_config = ApplicationConfiguration(**config_dict)
 
     expander = Expander(app_config)
