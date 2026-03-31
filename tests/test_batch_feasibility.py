@@ -14,9 +14,7 @@ import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
 
-from shallowtree.chem import TreeMolecule
-from shallowtree.chem.reaction import TemplatedRetroReaction
-from shallowtree.context.policy.filter_strategies import QuickKerasFilter
+from shallowtree.context.filters.quick_keras_filter import QuickKerasFilter
 
 
 class MockModel:

@@ -18,12 +18,12 @@ from __future__ import annotations
 
 import json
 import sys
-
-from shallowtree.configs.input_configuration import InputConfiguration
-from shallowtree.interfaces.full_tree_search import Expander
-import argparse
+from typing import List
 
 from rdkit import Chem
+
+from shallowtree.configs.input_configuration import InputConfiguration
+from shallowtree.interfaces.parallel import sequential_search, scaffold_search, standard_search
 
 
 def read_json_file(path: str):
@@ -34,23 +34,22 @@ def read_json_file(path: str):
     except (ValueError, KeyError, TypeError) as e:
         print(f"JSON format error in file ${path}: \n ${e}")
 
+def canonicalize_input(smiles_list: List[str]) -> List[str]:
+    smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles_list if Chem.MolFromSmiles(x) is not None]
+    return smiles
 
 def main():
-    # smiles = [x.strip() for x in sys.stdin]
-    # smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles if Chem.MolFromSmiles(x) is not None]
     config_path = sys.argv[1]
     config_dict = read_json_file(config_path)
     input_config = InputConfiguration(**config_dict)
 
-    expander = Expander(configfile=input_config.configuration_yml_path)
-    expander.expansion_policy.select_first()
-    expander.filter_policy.select_first()
-    expander.stock.select_first()
-
-    if input_config.scaffold is None:
-        df = expander.search_tree(input_config.smiles, max_depth=input_config.depth)
+    if input_config.parallel_processes ==1:
+        df = sequential_search(input_config)
     else:
-        df = expander.context_search(input_config.smiles, input_config.scaffold, max_depth=input_config.depth)
+        if input_config.scaffold is not None:
+            df = scaffold_search(input_config)
+        else:
+            df = standard_search(input_config)
 
     if not input_config.routes:
         df = df.drop(columns=['route'])

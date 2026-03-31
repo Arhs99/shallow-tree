@@ -91,10 +91,6 @@ class ContextCollection(abc.ABC):
     def load(self, *_: Any) -> None:
         """Load an item. Needs to be implemented by a sub-class"""
 
-    @abc.abstractmethod
-    def load_from_config(self, **config: Any) -> None:
-        """Load items from a configuration. Needs to be implemented by a sub-class"""
-
     def select(self, value: Union[str, List[str]], append: bool = False) -> None:
         """
         Select one or more items.
