@@ -50,6 +50,7 @@ redis = {version = "^5.0.0", optional = true}
 fakeredis = {version = "^2.20.0", optional = true}
 fastapi = {version = ">=0.100.0", optional = true}
 uvicorn = {version = ">=0.20.0", optional = true}
+pathos = {version = ">=0.3.0", optional = true}
 
 [tool.poetry.extras]
 all = ["scipy", "timeout-decorator", "molbloom"]
@@ -57,6 +58,7 @@ tf = ["tensorflow", "tensorflow-serving-api"]
 cache = ["redis"]
 dev = ["fakeredis"]
 api = ["fastapi", "uvicorn"]
+parallel = ["pathos"]
 
 [tool.poetry.scripts]
 searchcli = "shallowtree.interfaces.searchcli:main"

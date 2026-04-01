@@ -343,7 +343,7 @@ class Expander:
         return expansion_policy
 
     def _setup_filter_policy(self, filter_config: FilterConfiguration):
-        filter_strategy = QuickKerasFilter('all', filter_config)
+        filter_strategy = QuickKerasFilter(filter_config.model, filter_config)
         filter_policy = FilterPolicy(filter_strategy)
         return filter_policy
 
