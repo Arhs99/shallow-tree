@@ -47,7 +47,6 @@ class Configuration:
         """
         with open(filename, "r") as fileobj:
             txt = fileobj.read()
-        print(filename+ 80*"#")
         environ_var = re.findall(r"\$\{.+?\}", txt)
         for item in environ_var:
             if item[2:-1] not in os.environ:
@@ -57,7 +56,7 @@ class Configuration:
         return _config
 
     @classmethod
-    def from_json(self, path: str) -> Dict:
+    def from_json(cls, path: str) -> Dict:
         with open(path) as f:
             json_input = f.read().replace('\r', '').replace('\n', '')
         try:

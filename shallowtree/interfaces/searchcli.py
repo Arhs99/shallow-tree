@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import sys
+from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.context.config import Configuration
 from shallowtree.interfaces.full_tree_search import Expander
 import argparse
 
@@ -29,8 +31,8 @@ def main():
         description="Retrosynthetic analysis and scoring\n"
                     "Loads a list of SMILES from stdin, outputs a csv file with scores, predicted routes and required available starting materials",
         epilog="Example usage:\n"
-               "echo 'Clc1ccccc1COC5CC(Nc3n[nH]c4cc(c2ccccc2)ccc34)C5' | searchcli --config config.yml --scaffold '[*]c1n[nH]c2cc(-c3ccccc3)ccc12' --depth 2 --routes\n"
-               "searchcli --config config.yml --depth 2 --routes <smiles.txt >routes.csv",
+               "echo 'Clc1ccccc1COC5CC(Nc3n[nH]c4cc(c2ccccc2)ccc34)C5' | searchcli --config config.json --scaffold '[*]c1n[nH]c2cc(-c3ccccc3)ccc12' --depth 2 --routes\n"
+               "searchcli --config config.json --depth 2 --routes <smiles.txt >routes.csv",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -38,7 +40,7 @@ def main():
         '--config',
         type=str,
         required=True,
-        help='path to configuration yml file'
+        help='path to configuration json file'
     )
 
     parser.add_argument(
@@ -74,7 +76,9 @@ def main():
     smiles = [x.strip() for x in sys.stdin]
     smiles = [Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in smiles if Chem.MolFromSmiles(x) is not None]
     args = parser.parse_args()
-    expander = Expander(configfile=args.config)
+    config_dict = Configuration.from_json(args.config)
+    app_config = ApplicationConfiguration(**config_dict)
+    expander = Expander(app_config)
     expander.expansion_policy.select_first()
     expander.filter_policy.select_first()
     expander.stock.select_first()

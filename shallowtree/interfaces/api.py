@@ -28,6 +28,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
+from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.context.config import Configuration
 from shallowtree.interfaces.full_tree_search import Expander
 
 # Module-level singleton (one per uvicorn worker process)
@@ -61,8 +63,10 @@ class SearchResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _expander
-    config_path = os.environ.get("SHALLOWTREE_CONFIG", "config.yml")
-    _expander = Expander(configfile=config_path)
+    config_path = os.environ.get("SHALLOWTREE_CONFIG", "config.json")
+    config_dict = Configuration.from_json(config_path)
+    app_config = ApplicationConfiguration(**config_dict)
+    _expander = Expander(app_config)
     _expander.expansion_policy.select_first()
     _expander.filter_policy.select_first()
     _expander.stock.select_first()

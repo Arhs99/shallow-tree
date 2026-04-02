@@ -1,0 +1,25 @@
+{
+  "search": {
+    "algorithm": "",
+    "time_limit": 120
+  },
+  "expansion": {
+    "configuration_name": "uspto_expand",
+    "model": "uspto_expand",
+    "template": "/home/kostas/data/aizynth/full_uspto_03_05_19_unique_templates.csv",
+    "use_remote_models": true,
+    "cutoff_number": 50
+  },
+  "filter": {
+    "model": "filter_policy_all",
+    "use_remote_models": true
+  },
+  "stock": {
+    "dataset": "/home/kostas/data/enamine/enamine.hdf5"
+  },
+  "cache": {
+    "enabled": true,
+    "host": "localhost",
+    "port": 6379
+  }
+}
