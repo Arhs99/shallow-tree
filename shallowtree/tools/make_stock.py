@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
-from typing import TYPE_CHECKING
+from typing import Iterable, List
 
 try:
     import molbloom
@@ -18,10 +18,7 @@ from rdkit import Chem
 
 from shallowtree.chem import Molecule, MoleculeException
 
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import Iterable, List, Optional
-
-    _StrIterator = Iterable[str]
+_StrIterator = Iterable[str]
 
 
 def _get_arguments() -> argparse.Namespace:

@@ -1,0 +1,24 @@
+{
+	"search": {
+		"algorithm": "",
+		"time_limit": 120
+	},
+	"expansion":{
+		"configuration_name":"full",
+		"model": "/home/patronov/data/synth/full_uspto_03_05_19_rollout_policy.hdf5",
+		"template": "/home/patronov/data/synth/full_uspto_03_05_19_unique_templates.csv",
+		"cutoff_number": 50
+	},
+	"filter": {
+		"model": "/home/patronov/data/synth/filter_policy_all.hdf5"
+	},
+	"stock": {
+		"dataset": "/home/patronov/data/synth/enamine/enamine.hdf5"
+	},
+	"cache": {
+		"enabled": true,
+		"host": "localhost",
+		"port": 6379
+	},
+	"extra_template_path": "/home/patronov/data/synth/direct.csv"
+}

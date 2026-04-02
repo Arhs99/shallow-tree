@@ -5,15 +5,11 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING
 
-from shallowtree.utils.exceptions import (
-    PolicyException,
-)
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
     from shallowtree.chem.reaction import RetroReaction
-    from shallowtree.context.config import Configuration
-    from shallowtree.utils.type_utils import Any, List
+    from shallowtree.utils.type_utils import List
 
 
 class FilterStrategy(abc.ABC):
@@ -35,13 +31,8 @@ class FilterStrategy(abc.ABC):
 
     _required_kwargs: List[str] = []
 
-    def __init__(self, key: str, config: Configuration, **kwargs: Any) -> None:
-        if any(name not in kwargs for name in self._required_kwargs):
-            raise PolicyException(
-                f"A {self.__class__.__name__} class needs to be initiated "
-                f"with keyword arguments: {', '.join(self._required_kwargs)}"
-            )
-        self._config = config
+    def __init__(self, key: str) -> None:
+
         self._logger = logger()
         self.key = key
 
@@ -59,8 +50,8 @@ class FilterStrategy(abc.ABC):
         """
 
 
-FILTER_STRATEGY_ALIAS = {
-    "feasibility": "QuickKerasFilter",
-    "quick_keras_filter": "QuickKerasFilter",
-    "reactants_count": "ReactantsCountFilter",
-}
+# FILTER_STRATEGY_ALIAS = {
+#     "feasibility": "QuickKerasFilter",
+#     "quick_keras_filter": "QuickKerasFilter",
+#     "reactants_count": "ReactantsCountFilter",
+# }

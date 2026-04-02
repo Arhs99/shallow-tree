@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, Tuple, List
 
 from shallowtree.context.collection import ContextCollection
-from shallowtree.context.expansion_strategies.expansion_strategies import (
-    ExpansionStrategy,
-)
+from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 from shallowtree.utils.exceptions import PolicyException
 
 if TYPE_CHECKING:
     from shallowtree.chem import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
-    from shallowtree.utils.type_utils import List, Sequence, Tuple
 
 
 class ExpansionPolicy(ContextCollection):
@@ -29,11 +26,8 @@ class ExpansionPolicy(ContextCollection):
         super().__init__()
         self.load(source)
 
-    def get_actions(
-        self,
-        molecules: Sequence[TreeMolecule],
-        cache_molecules: Sequence[TreeMolecule] = None,
-    ) -> Tuple[List[RetroReaction], List[float]]:
+    def get_actions(self, molecules: Sequence[TreeMolecule], cache_molecules: Sequence[TreeMolecule] = None, ) \
+            -> Tuple[List[RetroReaction], List[float]]:
         """
         Get all the probable actions of a set of molecules, using the selected policies
 

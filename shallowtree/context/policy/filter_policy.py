@@ -19,7 +19,6 @@ class FilterPolicy(ContextCollection):
 
     def __init__(self,  source: FilterStrategy):
         super().__init__()
-        # self._config = config
         self.load(source)
 
     def __call__(self, reaction: RetroReaction):

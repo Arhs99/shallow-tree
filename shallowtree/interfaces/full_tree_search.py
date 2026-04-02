@@ -18,49 +18,40 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict
+from typing import List
 
 import pandas as pd
 from rdkit import Chem
 
 from shallowtree.chem import Molecule, TreeMolecule
+from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.configs.cache_configuration import CacheConfiguration
+from shallowtree.configs.expansion_configuration import ExpansionConfiguration
+from shallowtree.configs.filter_configuration import FilterConfiguration
+from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.cache.redis_cache import RedisCache
-from shallowtree.context.config import Configuration
+from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 from shallowtree.context.expansion_strategies.template_rules import TemplateRules
+from shallowtree.context.filters.quick_keras_filter import QuickKerasFilter
 from shallowtree.context.policy.expansion_policy import ExpansionPolicy
-from shallowtree.context.policy.expansion_strategy_factory import ExpansionStrategyFactory
 from shallowtree.context.policy.filter_policy import FilterPolicy
-from shallowtree.context.policy.filter_strategy_factory import FilterStrategyFactory
 from shallowtree.context.stock.stock import Stock
 from shallowtree.tools.profile_search import timer
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
 
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import (
-        List,
-        Optional,
-        StrDict,
-    )
-
-# TODO: Move extra_template_path to config.yml instead of hard-coding
-extra_template_path = Path(__file__).parent.parent / 'rules' / 'direct.csv'
 
 class Expander:
-    """
-    """
 
-    def __init__(self, configfile: Optional[str] = None, configdict: Optional[StrDict] = None ):
+    def __init__(self, app_config: ApplicationConfiguration):
         self._logger = logger()
 
-        config_dict = Configuration.from_file(configfile)
-        self.filter_policy = self._setup_filter_policy(config_dict)
-        self.expansion_policy = self._setup_expansion_policy(config_dict)
-        self.stock = self._setup_stock(config_dict)
-        self.redis_cache = self._setup_redis_cache(config_dict)
+        self.filter_policy = self._setup_filter_policy(app_config.filter)
+        self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
+        self.stock = self._setup_stock(app_config.stock)
+        self.redis_cache = self._setup_redis_cache(app_config.cache)
 
-
-        self.rules_expansion = TemplateRules(extra_template_path)
+        self.rules_expansion = self._setup_rules_expansion(app_config)
         self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
@@ -73,17 +64,17 @@ class Expander:
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
         rows = []
+        scaffold = Chem.MolFromSmarts(scaffold_str)
+
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            scaffold = Chem.MolFromSmarts(scaffold_str)
             self.BBs = []
             self._counter = 0
             self._cache_counter = 0
 
             # Pre-populate from Redis if available
-            if self.redis_cache:
-                self._load_from_redis(mol)
+            self._load_from_redis(mol)
 
             score = 0.0
             actions, _ = self.expansion_policy.get_actions([mol])
@@ -318,24 +309,21 @@ class Expander:
 
     def _save_to_redis(self) -> None:
         """Persist all solved routes to Redis."""
-        if not self.redis_cache:
-            return
+        if self.redis_cache:
+            for inchi_key, (reactants, score, classification) in list(self.solved.items()):
+                self.redis_cache.set_solved(inchi_key, reactants, score, classification)
+                if inchi_key in self.cache:
+                    depth, cache_score = self.cache[inchi_key]
+                    self.redis_cache.set_cache(inchi_key, depth, cache_score)
 
-        for inchi_key, (reactants, score, classification) in self.solved.items():
-            self.redis_cache.set_solved(inchi_key, reactants, score, classification)
-            if inchi_key in self.cache:
-                depth, cache_score = self.cache[inchi_key]
-                self.redis_cache.set_cache(inchi_key, depth, cache_score)
-
-    def _setup_redis_cache(self, config_dict: Dict):
-        cache_config = config_dict.pop("cache", {})
-        if cache_config.get("enabled", False):
+    def _setup_redis_cache(self, cache_config: CacheConfiguration):
+        if cache_config.enabled:
             redis_cache = RedisCache(
-                host=cache_config.get("host", "localhost"),
-                port=cache_config.get("port", 6379),
-                db=cache_config.get("db", 0),
-                password=cache_config.get("password"),
-                socket_timeout=cache_config.get("socket_timeout", 5.0),
+                host=cache_config.host,
+                port=cache_config.port,
+                db=cache_config.db,
+                password=cache_config.password,
+                socket_timeout=cache_config.socket_timeout,
                 filter_policy=self.filter_policy,
                 expansion_policy=self.expansion_policy,
                 stock=self.stock
@@ -344,20 +332,23 @@ class Expander:
         else:
             return None
 
-    def _setup_stock(self, config_dict: Dict):
-        stock_config = config_dict.pop("stock", {})
+    def _setup_stock(self, config_dict: StockConfiguration):
         stock = Stock()
-        stock.load_from_config(**stock_config)
+        stock.load_from_config(config_dict)
         return stock
 
-    def _setup_expansion_policy(self, config_dict: Dict):
-        expansion_config = config_dict.pop("expansion", {})
-        expansion_strategy = ExpansionStrategyFactory.load_from_config(**expansion_config)
+    def _setup_expansion_policy(self, expansion_config: ExpansionConfiguration):
+        expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config)
         expansion_policy = ExpansionPolicy(expansion_strategy)
         return expansion_policy
 
-    def _setup_filter_policy(self, config_dict: Dict):
-        filter_config = config_dict.pop("filter", {})
-        filter_strategy = FilterStrategyFactory.load_from_config(**filter_config)
+    def _setup_filter_policy(self, filter_config: FilterConfiguration):
+        filter_strategy = QuickKerasFilter('all', filter_config)
         filter_policy = FilterPolicy(filter_strategy)
         return filter_policy
+
+    def _setup_rules_expansion(self, app_config) -> TemplateRules :
+        extra_template_path = app_config.extra_template_path if app_config.extra_template_path \
+            else Path(__file__).parent.parent / 'rules' / 'direct.csv'
+
+        return TemplateRules(extra_template_path)

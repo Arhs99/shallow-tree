@@ -20,11 +20,10 @@ import json
 import sys
 from typing import List
 
-from shallowtree.configs.input_configuration import InputConfiguration
-from shallowtree.interfaces.full_tree_search import Expander
-import argparse
-
 from rdkit import Chem
+
+from shallowtree.configs.input_configuration import InputConfiguration
+from shallowtree.interfaces.parallel import sequential_search, scaffold_search, standard_search
 
 
 def read_json_file(path: str):
@@ -44,15 +43,13 @@ def main():
     config_dict = read_json_file(config_path)
     input_config = InputConfiguration(**config_dict)
 
-    expander = Expander(configfile=input_config.configuration_yml_path)
-    expander.expansion_policy.select_first()
-    expander.filter_policy.select_first()
-    expander.stock.select_first()
-
-    if input_config.scaffold is None:
-        df = expander.search_tree(input_config.smiles, max_depth=input_config.depth)
+    if input_config.parallel_processes ==1:
+        df = sequential_search(input_config)
     else:
-        df = expander.context_search(input_config.smiles, input_config.scaffold, max_depth=input_config.depth)
+        if input_config.scaffold is not None:
+            df = scaffold_search(input_config)
+        else:
+            df = standard_search(input_config)
 
     if not input_config.routes:
         df = df.drop(columns=['route'])

@@ -5,11 +5,12 @@ from typing import Any, List, Sequence, Optional, Tuple
 import numpy as np
 
 from shallowtree.chem import TreeMolecule, RetroReaction
+from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 from shallowtree.utils.type_utils import StrDict
 
 
-#FIXME this class is currently broken due to entanglement with Config
+#FIXME this class is currently broken
 class MultiExpansionStrategy(ExpansionStrategy):
     """
     A base class for combining multiple expansion strategies.
@@ -34,23 +35,18 @@ class MultiExpansionStrategy(ExpansionStrategy):
 
     _required_kwargs = ["expansion_strategies"]
 
-    def __init__(
-        self,
-        key: str,
-        config: "Configuration",
-        **kwargs: Any,
-    ):
-        super().__init__(key, config, **kwargs)
+    def __init__(self, key: str, config: ExpansionConfiguration):
+        super().__init__(key)
         self._config = config
         self._expansion_strategies: List[ExpansionStrategy] = []
         self.expansion_strategy_keys = kwargs["expansion_strategies"]
 
-        self.cutoff_number = kwargs.get("cutoff_number")
+        self.cutoff_number = config.cutoff_number
         if self.cutoff_number:
             print(f"Setting multi-expansion cutoff_number: {self.cutoff_number}")
 
         self.expansion_strategy_weights = self._set_expansion_strategy_weights(kwargs)
-        self.additive_expansion: bool = bool(kwargs.get("additive_expansion", False))
+        self.additive_expansion: bool = config.additive_expansion
         self._logger.info(
             f"Multi-expansion strategy with policies: {self.expansion_strategy_keys}"
             f", and corresponding weights: {self.expansion_strategy_weights}"

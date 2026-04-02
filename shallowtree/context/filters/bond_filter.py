@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Sequence, List
 
 from shallowtree.chem import RetroReaction
+from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.utils.bonds import BrokenBonds
 from shallowtree.utils.exceptions import RejectionException
@@ -15,11 +16,12 @@ class BondFilter(FilterStrategy):
     :param key: the key or label
     :param config: the configuration of the tree search
     """
+    _required_kwargs: List[str] = ["freeze_bonds"]
 
-    def __init__(self, key: str, config: "Configuration", **kwargs: Any) -> None:
-        super().__init__(key, config, **kwargs)
+    def __init__(self, key: str, config: FilterConfiguration) -> None:
+        super().__init__(key)
 
-        self._freeze_bonds = config.search.freeze_bonds
+        self._freeze_bonds: Sequence[Sequence[int]] = config.freeze_bonds # TODO: figure how to use this
         self._broken_bonds = BrokenBonds(self._freeze_bonds)
         self._logger.info(
             f"Loading bond filter to {key} with {len(self._freeze_bonds)} "

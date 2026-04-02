@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 import yaml
 
@@ -46,6 +47,7 @@ class Configuration:
         """
         with open(filename, "r") as fileobj:
             txt = fileobj.read()
+        print(filename+ 80*"#")
         environ_var = re.findall(r"\$\{.+?\}", txt)
         for item in environ_var:
             if item[2:-1] not in os.environ:
@@ -53,4 +55,12 @@ class Configuration:
             txt = txt.replace(item, os.environ[item[2:-1]])
         _config = yaml.load(txt, Loader=yaml.SafeLoader)
         return _config
-        # return Configuration.from_dict(_config)
+
+    @classmethod
+    def from_json(self, path: str) -> Dict:
+        with open(path) as f:
+            json_input = f.read().replace('\r', '').replace('\n', '')
+        try:
+            return json.loads(json_input)
+        except (ValueError, KeyError, TypeError) as e:
+            print(f"JSON format error in file ${path}: \n ${e}")
