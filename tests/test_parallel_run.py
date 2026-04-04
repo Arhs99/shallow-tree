@@ -1,13 +1,9 @@
 import unittest
-from os import path
 from pathlib import Path
 
 from shallowtree.configs.application_configuration import ApplicationConfiguration
 from shallowtree.configs.input_configuration import InputConfiguration
 from shallowtree.context.config import Configuration
-from shallowtree.interfaces.full_tree_search import Expander
-from pathos.pools import ProcessPool
-
 from shallowtree.interfaces.parallel import standard_search, scaffold_search
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +19,7 @@ class TestParallelRuns(unittest.TestCase):
             "CC(C)(C)c1cc2c(N/N=C\\c3cccc(CN)n3)ncnc2s1",
             "COc1cccc2c1c(Cl)c1c3c(cc(O)c(O)c32)C(=O)N1",
         ]
-        self.config = InputConfiguration(app_configuration_path=str(REPO_ROOT / "config.json"),
+        self.config = InputConfiguration(app_configuration_path=str(REPO_ROOT / "application_config/config.json"),
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3)
         config_dict = Configuration.from_json(self.config.app_configuration_path)

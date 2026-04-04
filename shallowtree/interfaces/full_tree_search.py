@@ -129,8 +129,6 @@ class Expander:
         return df
 
     def search_tree(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
-        """
-        """
         self.max_depth = max_depth
         rows = []
         for smi in smiles:
