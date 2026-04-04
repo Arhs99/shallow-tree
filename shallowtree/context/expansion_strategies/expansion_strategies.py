@@ -30,8 +30,6 @@ class ExpansionStrategy(abc.ABC):
     :param config: the configuration of the tree search
     """
 
-    _required_kwargs: List[str] = []
-
     def __init__(self, key: str):
         self._logger = logger()
         self.key = key

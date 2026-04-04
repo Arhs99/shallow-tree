@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class FilterConfiguration(BaseModel):
     model: str
+    filter_name: str
     use_remote_models: bool =  False
     prod_fp_name: str = 'input_1'
     rxn_fp_name: str = 'input_2'

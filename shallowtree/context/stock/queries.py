@@ -145,9 +145,3 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
         if mol in self:
             return self._price_dict[mol.inchi_key]
         raise StockException(f"no price info available for {mol.smiles}")
-
-
-
-STOCK_QUERY_ALIAS = {
-    "inchiset": "InMemoryInchiKeyQuery"
-}

@@ -330,19 +330,24 @@ class Expander:
         else:
             return None
 
-    def _setup_stock(self, config_dict: StockConfiguration):
+    def _setup_stock(self, stock_configs: List[StockConfiguration]):
         stock = Stock()
-        stock.load_from_config(config_dict)
+        for stock_config in stock_configs:
+            stock.load_stocks(stock_config)
         return stock
 
-    def _setup_expansion_policy(self, expansion_config: ExpansionConfiguration):
-        expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config)
-        expansion_policy = ExpansionPolicy(expansion_strategy)
+    def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]):
+        expansion_policy = ExpansionPolicy()
+        for expansion_config in expansion_configs:
+            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config)
+            expansion_policy.load(expansion_strategy)
         return expansion_policy
 
-    def _setup_filter_policy(self, filter_config: FilterConfiguration):
-        filter_strategy = QuickKerasFilter(filter_config.model, filter_config)
-        filter_policy = FilterPolicy(filter_strategy)
+    def _setup_filter_policy(self, filter_configs: List[FilterConfiguration]):
+        filter_policy = FilterPolicy()
+        for filter_config in filter_configs:
+            filter_strategy = QuickKerasFilter(filter_config.filter_name, filter_config)
+            filter_policy.load(filter_strategy)
         return filter_policy
 
     def _setup_rules_expansion(self, app_config) -> TemplateRules :

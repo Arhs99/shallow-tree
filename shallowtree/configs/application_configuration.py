@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 
 from shallowtree.configs.cache_configuration import CacheConfiguration
@@ -9,8 +11,8 @@ from shallowtree.configs.stock_configuration import StockConfiguration
 
 class ApplicationConfiguration(BaseModel):
     search: SearchConfiguration
-    expansion: ExpansionConfiguration
-    filter: FilterConfiguration
-    stock: StockConfiguration
+    expansion: List[ExpansionConfiguration]
+    filter: List[FilterConfiguration]
+    stock: List[StockConfiguration]
     cache: CacheConfiguration
     extra_template_path: str|None = None

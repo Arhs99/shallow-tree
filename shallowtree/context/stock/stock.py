@@ -151,7 +151,7 @@ class Stock(ContextCollection):
         self._logger.info(f"Loading stock from {source.__class__.__name__} to {key}")
         self._items[key] = source
 
-    def load_from_config(self, config: StockConfiguration) -> None:
+    def load_stocks(self, config: StockConfiguration) -> None:
         """
         Load one or more stock queries from a configuration
 
@@ -170,8 +170,7 @@ class Stock(ContextCollection):
         """
         self.set_stop_criteria(config.stop_criteria)
         obj = InMemoryInchiKeyQuery(path=config.dataset, inchi_key_col=config.inchi_key_col, price_col=config.price_col)
-        key = 'inchiset'
-        self.load(obj, key)
+        self.load(obj, config.stock_name)
 
 
     def price(self, mol: Molecule) -> float:
