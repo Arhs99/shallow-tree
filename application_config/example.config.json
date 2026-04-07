@@ -1,0 +1,32 @@
+{
+	"search": {
+		"algorithm": "",
+		"time_limit": 120
+	},
+	"expansion":[
+		{
+			"configuration_name":"full",
+            "model": "/home/kostas/data/aizynth/full_uspto_03_05_19_rollout_policy.hdf5",
+            "template": "/home/kostas/data/aizynth/full_uspto_03_05_19_unique_templates.csv",
+			"cutoff_number": 50
+		}
+	],
+	"filter": [
+		{
+			"filter_name": "all",
+			"model": "/home/kostas/data/aizynth/filter_policy_all.hdf5"
+		}
+	],
+	"stock": [
+		{
+			"stock_name": "enamine",
+			"dataset": "/home/kostas/data/enamine/enamine.hdf5"
+		}
+	],
+	"cache": {
+		"enabled": true,
+		"host": "localhost",
+		"port": 6379
+	},
+	"extra_template_path": "/home/patronov/data/synth/direct.csv"
+}

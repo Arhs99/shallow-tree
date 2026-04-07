@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 class TestStandardRuns(unittest.TestCase):
 
-    CONFIG_PATH = str(REPO_ROOT / "config.json")
+    CONFIG_PATH = str(REPO_ROOT / "application_config/config.json")
     SCAFFOLD = "[*]c1n[nH]c2cc(-c3ccccc3)ccc12"
     DEPTH = 2
 

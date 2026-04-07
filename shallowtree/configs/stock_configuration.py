@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class StockConfiguration(BaseModel):
+    stock_name: str = ""
     dataset: str
     inchi_key_col: str = "inchi_key"
     price_col: str|None = None

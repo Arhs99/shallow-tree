@@ -17,9 +17,8 @@ class FilterPolicy(ContextCollection):
 
     _collection_name = "filter policy"
 
-    def __init__(self,  source: FilterStrategy):
+    def __init__(self):
         super().__init__()
-        self.load(source)
 
     def __call__(self, reaction: RetroReaction):
         return self.apply(reaction)
