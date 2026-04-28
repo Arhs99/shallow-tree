@@ -41,6 +41,11 @@ For Redis caching support (recommended for parallel execution):
 poetry install -E cache
 ```
 
+Start docker instance with Redis
+```commandline
+docker run --rm --name redis-server -d -p 6379:6379 redis redis-server
+```
+
 ## Usage
 ### In python code
 One needs to import the ```Expander``` class and use any of the two available methods:

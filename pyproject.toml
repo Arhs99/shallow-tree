@@ -48,17 +48,24 @@ numpy = "<2.0.0"
 protobuf = ">=3.9.2,<4.0"
 redis = {version = "^5.0.0", optional = true}
 fakeredis = {version = "^2.20.0", optional = true}
+fastapi = {version = ">=0.100.0", optional = true}
+uvicorn = {version = ">=0.20.0", optional = true}
+pathos = {version = ">=0.3.0", optional = true}
 
 [tool.poetry.extras]
 all = ["scipy", "timeout-decorator", "molbloom"]
 tf = ["tensorflow", "tensorflow-serving-api"]
 cache = ["redis"]
 dev = ["fakeredis"]
+api = ["fastapi", "uvicorn"]
+parallel = ["pathos"]
 
 [tool.poetry.scripts]
 searchcli = "shallowtree.interfaces.searchcli:main"
 download_public_data = "shallowtree.tools.download_public_data:main"
 smiles2stock = "shallowtree.tools.make_stock:main"
+searchapi = "shallowtree.interfaces.api:run"
+searchapi-genkey = "shallowtree.interfaces.api:generate_key"
 
 [tool.coverage.run]
 relative_files = true

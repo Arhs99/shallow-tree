@@ -17,69 +17,64 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import List
 
-from rdkit import Chem
 import pandas as pd
+from rdkit import Chem
 
 from shallowtree.chem import Molecule, TreeMolecule
-from shallowtree.context.config import Configuration
-from shallowtree.context.policy.expansion_strategies import TemplateRules
-
+from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.configs.cache_configuration import CacheConfiguration
+from shallowtree.configs.expansion_configuration import ExpansionConfiguration
+from shallowtree.configs.filter_configuration import FilterConfiguration
+from shallowtree.configs.stock_configuration import StockConfiguration
+from shallowtree.context.cache.redis_cache import RedisCache
+from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
+from shallowtree.context.expansion_strategies.template_rules import TemplateRules
+from shallowtree.context.filters.quick_keras_filter import QuickKerasFilter
+from shallowtree.context.policy.expansion_policy import ExpansionPolicy
+from shallowtree.context.policy.filter_policy import FilterPolicy
+from shallowtree.context.stock.stock import Stock
+from shallowtree.tools.profile_search import timer
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
 
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import (
-        List,
-        Optional,
-        StrDict,
-    )
-
-# TODO: Move extra_template_path to config.yml instead of hard-coding
-extra_template_path = Path(__file__).parent.parent / 'rules' / 'direct.csv'
 
 class Expander:
-    """
-    """
 
-    def __init__(
-            self, configfile: Optional[str] = None, configdict: Optional[StrDict] = None
-    ):
+    def __init__(self, app_config: ApplicationConfiguration):
         self._logger = logger()
 
-        if configfile:
-            self.config = Configuration.from_file(configfile)
-        elif configdict:
-            self.config = Configuration.from_dict(configdict)
-        else:
-            self.config = Configuration()
+        self.filter_policy = self._setup_filter_policy(app_config.filter)
+        self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
+        self.stock = self._setup_stock(app_config.stock)
+        self.redis_cache = self._setup_redis_cache(app_config.cache)
 
-        self.expansion_policy = self.config.expansion_policy
-        self.rules_expansion = TemplateRules(extra_template_path)
-        self.filter_policy = self.config.filter_policy
-        self.stock = self.config.stock
-        self.redis_cache = self.config.redis_cache
+        self.rules_expansion = self._setup_rules_expansion(app_config)
         self.max_depth = 2
+        self.cache = dict()
+        self.solved = dict()
+        self._profiling = False
+        self._timers = {}
+        self.BBs = []
+        self._counter = 0
+        self._cache_counter = 0
 
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
         rows = []
+        scaffold = Chem.MolFromSmarts(scaffold_str)
+
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            scaffold = Chem.MolFromSmarts(scaffold_str)
-            self.solved = dict()
             self.BBs = []
-            self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
 
             # Pre-populate from Redis if available
-            if self.redis_cache:
-                self._load_from_redis(mol)
+            self._load_from_redis(mol)
 
             score = 0.0
             actions, _ = self.expansion_policy.get_actions([mol])
@@ -133,21 +128,13 @@ class Expander:
         df = pd.DataFrame(rows)
         return df
 
-    def search_tree(
-            self,
-            smiles: List[str],
-            max_depth=2
-    ) -> pd.DataFrame:
-        """
-        """
+    def search_tree(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
         rows = []
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            self.solved = dict()
             self.BBs = []
-            self.cache = dict()
             self._counter = 0
             self._cache_counter = 0
 
@@ -156,6 +143,10 @@ class Expander:
                 self._load_from_redis(mol)
 
             score = self.req_search_tree(mol, depth=0)
+
+            if self._profiling:
+                self._timers["_counter_total"] = self._timers.get("_counter_total", 0) + self._counter
+                self._timers["_cache_counter_total"] = self._timers.get("_cache_counter_total", 0) + self._cache_counter
 
             # Persist to Redis if available and successful
             if self.redis_cache and score > 0.9:
@@ -172,13 +163,27 @@ class Expander:
         if depth > self.max_depth:
             return 0.0
         self._counter += 1
-        if mol in self.stock:
-            return 1.0
-        if mol.inchi_key in self.cache.keys():
+        _p = self._profiling
+
+        if _p:
+            with timer(self._timers, "cache_lookup"):
+                cache_hit = mol.inchi_key in self.cache
+        else:
+            cache_hit = mol.inchi_key in self.cache
+        if cache_hit:
             self._cache_counter += 1
             cdepth, cscore = self.cache[mol.inchi_key]
             if cdepth <= depth:
                 return cscore
+
+        if _p:
+            with timer(self._timers, "stock_check"):
+                in_stock = mol in self.stock
+        else:
+            in_stock = mol in self.stock
+        if in_stock:
+            self.cache[mol.inchi_key] = (0, 1.0)
+            return 1.0
 
         # Check Redis cache if local cache miss
         if self.redis_cache and mol.inchi_key not in self.cache:
@@ -194,8 +199,13 @@ class Expander:
                         self.solved[mol.inchi_key] = solved_data
                     return cscore
 
-        actions, _ = self.expansion_policy.get_actions([mol])
-        det_actions = self.rules_expansion.get_actions([mol])
+        if _p:
+            with timer(self._timers, "expansion_policy"):
+                actions, _ = self.expansion_policy.get_actions([mol])
+                det_actions = self.rules_expansion.get_actions([mol])
+        else:
+            actions, _ = self.expansion_policy.get_actions([mol])
+            det_actions = self.rules_expansion.get_actions([mol])
 
         # Separate rules-based from ML-based actions, filtering out empty reactants
         rules_actions = []
@@ -210,12 +220,21 @@ class Expander:
                 ml_actions.append(action)
 
         # Batch predict all ML actions at once
-        ml_feasibilities = []
-        if ml_actions:
-            filter_name = next(iter(self.filter_policy.selection))
-            ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
-            for action, (_, prob) in zip(ml_actions, ml_feasibilities):
-                action.metadata["feasibility"] = prob
+        if _p:
+            with timer(self._timers, "filter_batch"):
+                ml_feasibilities = []
+                if ml_actions:
+                    filter_name = next(iter(self.filter_policy.selection))
+                    ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
+                    for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+                        action.metadata["feasibility"] = prob
+        else:
+            ml_feasibilities = []
+            if ml_actions:
+                filter_name = next(iter(self.filter_policy.selection))
+                ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
+                for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+                    action.metadata["feasibility"] = prob
 
         # Collect all feasible actions (rules + ML with prob >= 0.5)
         feasible_actions = rules_actions + [
@@ -224,15 +243,27 @@ class Expander:
         ]
 
         score = 0.0
-        for action in feasible_actions:
-            reactants = action.reactants
-            score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
-            if score > 0.9:
-                self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
-                self.cache[mol.inchi_key] = (depth, score)
-                if self.redis_cache:
-                    self.redis_cache.set_cache(mol.inchi_key, depth, score)
-                return score
+        if _p:
+            with timer(self._timers, "recursive_dfs"):
+                for action in feasible_actions:
+                    reactants = action.reactants
+                    score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
+                    if score > 0.9:
+                        self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
+                        self.cache[mol.inchi_key] = (depth, score)
+                        if self.redis_cache:
+                            self.redis_cache.set_cache(mol.inchi_key, depth, score)
+                        return score
+        else:
+            for action in feasible_actions:
+                reactants = action.reactants
+                score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
+                if score > 0.9:
+                    self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
+                    self.cache[mol.inchi_key] = (depth, score)
+                    if self.redis_cache:
+                        self.redis_cache.set_cache(mol.inchi_key, depth, score)
+                    return score
         self.cache[mol.inchi_key] = (depth, score)
         if self.redis_cache:
             self.redis_cache.set_cache(mol.inchi_key, depth, score)
@@ -276,11 +307,51 @@ class Expander:
 
     def _save_to_redis(self) -> None:
         """Persist all solved routes to Redis."""
-        if not self.redis_cache:
-            return
+        if self.redis_cache:
+            for inchi_key, (reactants, score, classification) in list(self.solved.items()):
+                self.redis_cache.set_solved(inchi_key, reactants, score, classification)
+                if inchi_key in self.cache:
+                    depth, cache_score = self.cache[inchi_key]
+                    self.redis_cache.set_cache(inchi_key, depth, cache_score)
 
-        for inchi_key, (reactants, score, classification) in self.solved.items():
-            self.redis_cache.set_solved(inchi_key, reactants, score, classification)
-            if inchi_key in self.cache:
-                depth, cache_score = self.cache[inchi_key]
-                self.redis_cache.set_cache(inchi_key, depth, cache_score)
+    def _setup_redis_cache(self, cache_config: CacheConfiguration):
+        if cache_config.enabled:
+            redis_cache = RedisCache(
+                host=cache_config.host,
+                port=cache_config.port,
+                db=cache_config.db,
+                password=cache_config.password,
+                socket_timeout=cache_config.socket_timeout,
+                filter_policy=self.filter_policy,
+                expansion_policy=self.expansion_policy,
+                stock=self.stock
+            )
+            return redis_cache
+        else:
+            return None
+
+    def _setup_stock(self, stock_configs: List[StockConfiguration]):
+        stock = Stock()
+        for stock_config in stock_configs:
+            stock.load_stocks(stock_config)
+        return stock
+
+    def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]):
+        expansion_policy = ExpansionPolicy()
+        for expansion_config in expansion_configs:
+            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config)
+            expansion_policy.load(expansion_strategy)
+        return expansion_policy
+
+    def _setup_filter_policy(self, filter_configs: List[FilterConfiguration]):
+        filter_policy = FilterPolicy()
+        for filter_config in filter_configs:
+            filter_strategy = QuickKerasFilter(filter_config.filter_name, filter_config)
+            filter_policy.load(filter_strategy)
+        return filter_policy
+
+    def _setup_rules_expansion(self, app_config) -> TemplateRules :
+        extra_template_path = app_config.extra_template_path if app_config.extra_template_path \
+            else Path(__file__).parent.parent / 'rules' / 'direct.csv'
+
+        return TemplateRules(extra_template_path)
