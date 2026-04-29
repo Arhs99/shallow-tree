@@ -45,6 +45,7 @@ class Expander:
 
     def __init__(self, app_config: ApplicationConfiguration):
         self._logger = logger()
+        self.app_config = app_config
 
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
@@ -75,56 +76,9 @@ class Expander:
 
             # Pre-populate from Redis if available
             self._load_from_redis(mol)
-
-            score = 0.0
-            actions, _ = self.expansion_policy.get_actions([mol])
-            det_actions = self.rules_expansion.get_actions([mol])
-
-            # Separate rules-based from ML-based actions, filtering out empty reactants
-            rules_actions = []
-            ml_actions = []
-            for action in det_actions + actions:
-                if not action.reactants:
-                    continue
-                if action.metadata['policy_name'] == 'rules':
-                    action.metadata["feasibility"] = 1.0
-                    rules_actions.append(action)
-                else:
-                    ml_actions.append(action)
-
-            # Batch predict all ML actions at once
-            ml_feasibilities = []
-            if ml_actions:
-                filter_name = next(iter(self.filter_policy.selection))
-                ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
-                for action, (_, prob) in zip(ml_actions, ml_feasibilities):
-                    action.metadata["feasibility"] = prob
-
-            # Collect all feasible actions (rules + ML with prob >= 0.5)
-            feasible_actions = rules_actions + [
-                action for action, (_, prob) in zip(ml_actions, ml_feasibilities)
-                if prob >= 0.5
-            ]
-
-            root_match = set(mol.index_to_mapping[x] for x in mol.rd_mol.GetSubstructMatch(scaffold))
-            for action in feasible_actions:
-                reactants = action.reactants
-                for r in reactants[0]:
-                    r_match = set(r.index_to_mapping[x] for x in r.rd_mol.GetSubstructMatch(scaffold))
-                    if r_match and len(r_match ^ root_match) == 2:
-                        score = sum([self.req_search_tree(x, 1) for x in reactants[0] if x != r]) / (len(
-                            reactants[0]) - 1)
-                        if score > 0.9:
-                            self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
-                        break
-            # Persist to Redis if available and successful
-            if self.redis_cache and score > 0.9:
-                self._save_to_redis()
-
-            if score > 0.9:
-                self.best_route(mol, 0, solution)
-                # json_data = json.dumps(dict(solution), indent=2)
-            rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
+            feasible_actions = self._determine_feasible_actions(mol)
+            score = self._solve_and_score_routes(mol, scaffold, feasible_actions)
+            rows = self._update(mol, smi, score, solution, rows)
         df = pd.DataFrame(rows)
         return df
 
@@ -149,10 +103,10 @@ class Expander:
                 self._timers["_cache_counter_total"] = self._timers.get("_cache_counter_total", 0) + self._cache_counter
 
             # Persist to Redis if available and successful
-            if self.redis_cache and score > 0.9:
+            if self.redis_cache and score > self.app_config.search.score_acceptance_threshold:
                 self._save_to_redis()
 
-            if score > 0.9:
+            if score > self.app_config.search.score_acceptance_threshold:
                 self.best_route(mol, 0, solution)
                 # json_data = json.dumps(dict(solution), indent=2)
             rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
@@ -269,7 +223,7 @@ class Expander:
             self.redis_cache.set_cache(mol.inchi_key, depth, score)
         return score
 
-    def best_route(self, mol: Molecule, depth: int, tree: defaultdict):
+    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict):
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
@@ -283,18 +237,83 @@ class Expander:
                     self.best_route(x, depth + 1, tree)
                 return
 
+    def _determine_rules_and_actions(self, mol: TreeMolecule):
+        expansion_policy, _ = self.expansion_policy.get_actions([mol])
+        rules_expansion = self.rules_expansion.get_actions([mol])
+
+        # Separate rules-based from ML-based actions, filtering out empty reactants
+        actions = rules_expansion + expansion_policy
+        rules_actions = []
+        ml_actions = []
+        for action in actions:
+            if not action.reactants:
+                continue
+            if action.metadata['policy_name'] == 'rules':
+                action.metadata["feasibility"] = 1.0
+                rules_actions.append(action)
+            else:
+                ml_actions.append(action)
+        return rules_actions, ml_actions
+
+    def _apply_ml_actions(self, ml_actions: List):
+        # Batch predict all ML actions at once
+        ml_feasibilities = []
+        if ml_actions:
+            filter_name = next(iter(self.filter_policy.selection))
+            ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
+            for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+                action.metadata["feasibility"] = prob
+        return ml_feasibilities
+
+    def _collect_actions_above_threshold(self, ml_actions: List, rules_actions: List, ml_feasibilities: List):
+        # Collect all feasible actions (rules + ML with prob >= 0.5)
+        feasible_actions=rules_actions
+        for action, (_, prob) in zip(ml_actions, ml_feasibilities):
+            if prob >= 0.5:
+                feasible_actions.append(action)
+        return feasible_actions
+
+    def _determine_feasible_actions(self, mol: TreeMolecule):
+        rules_actions, ml_actions = self._determine_rules_and_actions(mol)
+        ml_feasibilities = self._apply_ml_actions(ml_actions)
+        feasible_actions = self._collect_actions_above_threshold(ml_actions, rules_actions, ml_feasibilities)
+
+        return feasible_actions
+
+    def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List) -> float:
+        score = 0
+        root_match = set(mol.index_to_mapping[x] for x in mol.rd_mol.GetSubstructMatch(scaffold))
+        for action in feasible_actions:
+            reactants = action.reactants
+            for r in reactants[0]:
+                r_match = set(r.index_to_mapping[x] for x in r.rd_mol.GetSubstructMatch(scaffold))
+                condition = r_match ^ root_match
+                if r_match and len(condition) == 2:
+                    score_list = [self.req_search_tree(x, 1) for x in reactants[0] if x != r]
+                    score = sum(score_list) / (len(reactants[0]) - 1)
+                    if score > self.app_config.search.score_acceptance_threshold:
+                        self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
+                    break
+        return score
+
+    def _update(self, mol: TreeMolecule, smi: str, score: float, solution: defaultdict, rows: List) -> List:
+        if score > self.app_config.search.score_acceptance_threshold:
+            self.best_route(mol, 0, solution)
+            if self.redis_cache:  # Persist to Redis if available and successful
+                self._save_to_redis()
+        rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
+        return rows
+
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:
         """Pre-populate local caches from Redis for the root molecule subtree."""
-        if not self.redis_cache:
-            return
-
-        cache_data = self.redis_cache.get_cache(root_mol.inchi_key)
-        if cache_data:
-            self.cache[root_mol.inchi_key] = cache_data
-            solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
-            if solved_data:
-                self.solved[root_mol.inchi_key] = solved_data
-                self._load_solved_subtree(solved_data[0])
+        if self.redis_cache:
+            cache_data = self.redis_cache.get_cache(root_mol.inchi_key)
+            if cache_data:
+                self.cache[root_mol.inchi_key] = cache_data
+                solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
+                if solved_data:
+                    self.solved[root_mol.inchi_key] = solved_data
+                    self._load_solved_subtree(solved_data[0])
 
     def _load_solved_subtree(self, reactants: List[TreeMolecule]) -> None:
         """Recursively load solved entries for reactants."""

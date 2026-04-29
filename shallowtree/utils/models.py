@@ -66,9 +66,7 @@ TF_SERVING_GRPC_PORT = '8500' #os.environ.get("TF_SERVING_GRPC_PORT")
 
 def load_model(
     source: str, key: str, use_remote_models: bool
-) -> Union[
-    "LocalKerasModel", "LocalOnnxModel", "ExternalModelViaGRPC", "ExternalModelViaREST"
-]:
+) -> Union["LocalKerasModel", "LocalOnnxModel", "ExternalModelViaGRPC", "ExternalModelViaREST"]:
     """
     Load model from a configuration specification.
 
