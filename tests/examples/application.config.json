@@ -1,7 +1,7 @@
 {
 	"search": {
-		"algorithm": "",
-		"time_limit": 120
+		"time_limit": 120,
+		"score_acceptance_threshold": 0.9
 	},
 	"expansion":{
 		"configuration_name":"full",
