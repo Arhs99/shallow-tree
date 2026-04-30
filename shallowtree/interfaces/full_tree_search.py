@@ -102,17 +102,13 @@ class Expander:
             return 0.0
         self._counter += 1
 
-        cache_hit = mol.inchi_key in self.cache
-
-        if cache_hit:
+        if mol.inchi_key in self.cache:
             self._cache_counter += 1
             cdepth, cscore = self.cache[mol.inchi_key]
             if cdepth <= depth:
                 return cscore
 
-        in_stock = mol in self.stock
-
-        if in_stock:
+        if mol in self.stock:
             self.cache[mol.inchi_key] = (0, 1.0)
             return 1.0
 
@@ -130,40 +126,13 @@ class Expander:
                         self.solved[mol.inchi_key] = solved_data
                     return cscore
 
-        actions, _ = self.expansion_policy.get_actions([mol])
-        det_actions = self.rules_expansion.get_actions([mol])
-
-        # Separate rules-based from ML-based actions, filtering out empty reactants
-        rules_actions = []
-        ml_actions = []
-        for action in actions + det_actions:
-            if not action.reactants:
-                continue
-            if action.metadata['policy_name'] == 'rules':
-                action.metadata["feasibility"] = 1.0
-                rules_actions.append(action)
-            else:
-                ml_actions.append(action)
-
-        # Batch predict all ML actions at once
-        ml_feasibilities = []
-        if ml_actions:
-            filter_name = next(iter(self.filter_policy.selection))
-            ml_feasibilities = self.filter_policy[filter_name].batch_feasibility(ml_actions)
-            for action, (_, prob) in zip(ml_actions, ml_feasibilities):
-                action.metadata["feasibility"] = prob
-
-        # Collect all feasible actions (rules + ML with prob >= 0.5)
-        feasible_actions = rules_actions + [
-            action for action, (_, prob) in zip(ml_actions, ml_feasibilities)
-            if prob >= 0.5
-        ]
+        feasible_actions = self._determine_feasible_actions(mol)
 
         score = 0.0
         for action in feasible_actions:
             reactants = action.reactants
             score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
-            if score > 0.9:
+            if score > self.app_config.search.score_acceptance_threshold:
                 self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
                 self.cache[mol.inchi_key] = (depth, score)
                 if self.redis_cache:
@@ -248,12 +217,12 @@ class Expander:
                     break
         return score
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, solution: defaultdict, rows: List) -> List:
+    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List) -> List:
         if score > self.app_config.search.score_acceptance_threshold:
-            self.best_route(mol, 0, solution)
+            self.best_route(mol, 0, tree)
             if self.redis_cache:  # Persist to Redis if available and successful
                 self._save_to_redis()
-        rows.append({'SMILES': smi, 'score': score, 'route': dict(solution), 'BBs': self.BBs})
+        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
         return rows
 
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:

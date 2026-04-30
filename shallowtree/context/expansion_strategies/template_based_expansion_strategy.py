@@ -143,9 +143,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         for molecule in molecules:
             if molecule.inchi_key in self._cache or molecule.inchi_key in pred_inchis:
                 continue
-            fp_list.append(
-                _make_fingerprint(molecule, self.model, self.chiral_fingerprints)
-            )
+            fp_list.append(_make_fingerprint(molecule, self.model, self.chiral_fingerprints))
             pred_inchis.append(molecule.inchi_key)
 
         if not pred_inchis:
