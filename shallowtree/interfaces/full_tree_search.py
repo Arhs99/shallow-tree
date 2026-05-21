@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from rdkit import Chem
@@ -43,12 +43,19 @@ from shallowtree.utils.logging import logger
 
 class Expander:
 
-    def __init__(self, app_config: ApplicationConfiguration):
+    def __init__(
+            self,
+            app_config: ApplicationConfiguration,
+            prebuilt_stock: Optional[Stock] = None,
+    ):
         self._logger = logger()
 
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
-        self.stock = self._setup_stock(app_config.stock)
+        if prebuilt_stock is not None:
+            self.stock = prebuilt_stock
+        else:
+            self.stock = self._setup_stock(app_config.stock)
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
         self.rules_expansion = self._setup_rules_expansion(app_config)
