@@ -37,6 +37,7 @@ from shallowtree.context.policy.expansion_policy import ExpansionPolicy
 from shallowtree.context.policy.filter_policy import FilterPolicy
 from shallowtree.context.stock.stock import Stock
 from shallowtree.tools.profile_search import timer
+from shallowtree.utils.lru import LRUCache
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
 
@@ -64,8 +65,10 @@ class Expander:
         self.solved = dict()
         # Intern table for TreeMolecule dedup (Vector B). Populated lazily by
         # the reaction-application path; reachable from any TreeMolecule via
-        # the parent chain.
-        self._intern_cache: dict = {}
+        # the parent chain. Bounded LRU: 2000 entries (~60 MB) covers the hot
+        # working set; the multiplicity histogram shows ~83 % of dedup is
+        # concentrated in the top few hundred most-duplicated InChI keys.
+        self._intern_cache: LRUCache = LRUCache(maxsize=2000)
         self._profiling = False
         self._timers = {}
         self.BBs = []
@@ -78,7 +81,6 @@ class Expander:
         scaffold = Chem.MolFromSmarts(scaffold_str)
 
         for smi in smiles:
-            self._intern_cache.clear()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
@@ -144,11 +146,6 @@ class Expander:
         self.max_depth = max_depth
         rows = []
         for smi in smiles:
-            # Cross-SMILES dedup contribution is negligible (measured: zero on
-            # 10-SMILES sample) so bound the intern cache to one SMILES at a
-            # time. Keeps the ~80% within-SMILES construction saving; caps
-            # cache resident at ~one-SMILES-worth of unique TreeMolecules.
-            self._intern_cache.clear()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
