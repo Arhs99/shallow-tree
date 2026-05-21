@@ -78,6 +78,7 @@ class Expander:
         scaffold = Chem.MolFromSmarts(scaffold_str)
 
         for smi in smiles:
+            self._intern_cache.clear()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
@@ -143,6 +144,11 @@ class Expander:
         self.max_depth = max_depth
         rows = []
         for smi in smiles:
+            # Cross-SMILES dedup contribution is negligible (measured: zero on
+            # 10-SMILES sample) so bound the intern cache to one SMILES at a
+            # time. Keeps the ~80% within-SMILES construction saving; caps
+            # cache resident at ~one-SMILES-worth of unique TreeMolecules.
+            self._intern_cache.clear()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
