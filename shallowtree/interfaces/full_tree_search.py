@@ -62,6 +62,10 @@ class Expander:
         self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
+        # Intern table for TreeMolecule dedup (Vector B). Populated lazily by
+        # the reaction-application path; reachable from any TreeMolecule via
+        # the parent chain.
+        self._intern_cache: dict = {}
         self._profiling = False
         self._timers = {}
         self.BBs = []
@@ -75,7 +79,7 @@ class Expander:
 
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi)
+            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
             self._counter = 0
             self._cache_counter = 0
@@ -140,7 +144,7 @@ class Expander:
         rows = []
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi)
+            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
             self._counter = 0
             self._cache_counter = 0

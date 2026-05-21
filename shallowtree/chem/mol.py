@@ -273,6 +273,7 @@ class TreeMolecule(Molecule):
             smiles: Optional[str] = None,
             sanitize: bool = False,
             mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
+            intern_cache: Optional[Dict[str, "TreeMolecule"]] = None,
     ) -> None:
         super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
         self.parent = parent
@@ -280,6 +281,14 @@ class TreeMolecule(Molecule):
             self.transform: int = parent.transform + 1
         else:
             self.transform = transform or 0
+
+        # Intern cache reference propagates through the parent chain so any
+        # TreeMolecule reachable from the root can look itself up by inchi_key.
+        # Step 1: plumb only. Lookups will be added in a follow-up.
+        if parent is not None:
+            self.intern_cache: Optional[Dict[str, "TreeMolecule"]] = parent.intern_cache
+        else:
+            self.intern_cache = intern_cache
 
         self.original_smiles = smiles
         self.mapped_mol = Chem.Mol(self.rd_mol)
