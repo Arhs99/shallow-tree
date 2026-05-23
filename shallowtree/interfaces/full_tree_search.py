@@ -287,6 +287,12 @@ class Expander:
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
+                if mol not in self.stock:
+                    self._logger.warning(
+                        "best_route: %s missing from solved but not in stock — "
+                        "route truncated (cache/solved invariant violated)",
+                        mol.smiles,
+                    )
                 self.BBs.append(mol.smiles)
                 return
             else:
