@@ -126,7 +126,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         else:
             maxidx = len(cumsum)
         maxidx = min(maxidx, self.cutoff_number) or 1
-        return sortidx[:maxidx]
+        return sortidx[:maxidx].copy()
 
     def _load_mask_file(self, maskfile: str) -> np.ndarray:
         self._logger.info(f"Loading masking of templates from {maskfile} to {self.key}")
