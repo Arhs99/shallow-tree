@@ -53,7 +53,6 @@ class Expander:
             self.stock = prebuilt_stock
         else:
             self.stock = self._setup_stock(app_config.stock)
-        self.stock = self._setup_stock(app_config.stock)
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
         self.rules_expansion = self._setup_rules_expansion(app_config)

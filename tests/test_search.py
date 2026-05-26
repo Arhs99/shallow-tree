@@ -215,6 +215,38 @@ class TestBestRoute(unittest.TestCase):
         self.assertIn("CCO", exp.BBs)
         self.assertEqual(len(tree), 0)
 
+    def test_best_route_warns_when_solved_missing_for_non_stock_mol(self):
+        """Guard against silent route truncation from LRU eviction or redis
+        partial writes: a non-stock mol missing from self.solved should warn."""
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=False)
+        exp = _make_expander(stock=stock)
+        exp.max_depth = 2
+        exp.solved = {}
+
+        mol = TreeMolecule(parent=None, smiles="CCO")
+        tree = defaultdict(list)
+        exp.BBs = []
+        with self.assertLogs(exp._logger, level="WARNING") as cm:
+            exp.best_route(mol, 0, tree)
+        self.assertTrue(any("route truncated" in m for m in cm.output))
+        self.assertIn("CCO", exp.BBs)
+
+    def test_best_route_silent_for_stock_mol(self):
+        """The normal stock-termination path stays silent (no warning)."""
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_expander(stock=stock)
+        exp.max_depth = 2
+        exp.solved = {}
+
+        mol = TreeMolecule(parent=None, smiles="CCO")
+        tree = defaultdict(list)
+        exp.BBs = []
+        with self.assertNoLogs(exp._logger, level="WARNING"):
+            exp.best_route(mol, 0, tree)
+        self.assertIn("CCO", exp.BBs)
+
 
 class TestSearchTree(unittest.TestCase):
     """Test search_tree returns correct DataFrame."""
