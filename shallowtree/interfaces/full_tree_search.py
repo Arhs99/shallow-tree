@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from rdkit import Chem
@@ -38,16 +38,21 @@ from shallowtree.context.policy.filter_policy import FilterPolicy
 from shallowtree.context.stock.stock import Stock
 # This must be imported first to setup logging for rdkit, tensorflow etc
 from shallowtree.utils.logging import logger
+from shallowtree.utils.lru import LRUCache
 
 
 class Expander:
 
-    def __init__(self, app_config: ApplicationConfiguration):
+    def __init__(self, app_config: ApplicationConfiguration, prebuilt_stock: Optional[Stock] = None):
         self._logger = logger()
         self.app_config = app_config
 
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
+        if prebuilt_stock is not None:
+            self.stock = prebuilt_stock
+        else:
+            self.stock = self._setup_stock(app_config.stock)
         self.stock = self._setup_stock(app_config.stock)
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
@@ -55,6 +60,12 @@ class Expander:
         self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
+        # Intern table for TreeMolecule dedup (Vector B). Populated lazily by
+        # the reaction-application path; reachable from any TreeMolecule via
+        # the parent chain. Bounded LRU: 2000 entries (~60 MB) covers the hot
+        # working set; the multiplicity histogram shows ~83 % of dedup is
+        # concentrated in the top few hundred most-duplicated InChI keys.
+        self._intern_cache: LRUCache = LRUCache(maxsize=2000)
         self._timers = {}
         self.BBs = []
         self._counter = 0
@@ -67,7 +78,7 @@ class Expander:
 
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi)
+            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
             self._counter = 0
             self._cache_counter = 0
@@ -85,7 +96,7 @@ class Expander:
         rows = []
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi)
+            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
             self._counter = 0
             self._cache_counter = 0
@@ -148,6 +159,10 @@ class Expander:
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
+                if mol not in self.stock: #TODO: Why is this needed?
+                    self._logger.warning(
+                        f"best_route: {mol.smiles} missing from solved but not in stock — "
+                        "route truncated (cache/solved invariant violated)")
                 self.BBs.append(mol.smiles)
                 return
             else:
