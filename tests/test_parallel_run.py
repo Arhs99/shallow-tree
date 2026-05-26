@@ -44,9 +44,10 @@ class TestParallelRuns(unittest.TestCase):
         df_result = standard_search(config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
+        print(df_result)
         self.assertListEqual(expected, result)
         self.assertListEqual(expected_scores, scores)
-        print(df_result)
+
 
     def test_sequential_search(self):
         expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'],[],[],[],[]]

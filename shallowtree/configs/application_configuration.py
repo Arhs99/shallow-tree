@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Any
 
 from pydantic import BaseModel
 
@@ -16,3 +16,4 @@ class ApplicationConfiguration(BaseModel):
     stock: List[StockConfiguration]
     cache: CacheConfiguration
     extra_template_path: str|None = None
+    prebuilt_stock: Optional[Any] = None

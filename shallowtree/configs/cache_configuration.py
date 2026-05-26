@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class CacheConfiguration(BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     host: str = 'localhost'
     port: int = 6379
     db: int = 0
