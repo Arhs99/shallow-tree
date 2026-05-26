@@ -247,6 +247,24 @@ class TestBestRoute(unittest.TestCase):
             exp.best_route(mol, 0, tree)
         self.assertIn("CCO", exp.BBs)
 
+    def test_best_route_silent_for_context_scaffold_mol(self):
+        """In context_search, scaffold-matching reactants are intentional
+        terminal nodes (never added to solved); best_route must not warn."""
+        from rdkit import Chem
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=False)
+        exp = _make_expander(stock=stock)
+        exp.max_depth = 2
+        exp.solved = {}
+        exp._context_scaffold = Chem.MolFromSmarts("CCO")
+
+        mol = TreeMolecule(parent=None, smiles="CCO")
+        tree = defaultdict(list)
+        exp.BBs = []
+        with self.assertNoLogs(exp._logger, level="WARNING"):
+            exp.best_route(mol, 0, tree)
+        self.assertIn("CCO", exp.BBs)
+
 
 class TestSearchTree(unittest.TestCase):
     """Test search_tree returns correct DataFrame."""

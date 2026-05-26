@@ -69,11 +69,16 @@ class Expander:
         self.BBs = []
         self._counter = 0
         self._cache_counter = 0
+        self._context_scaffold = None
 
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
         rows = []
         scaffold = Chem.MolFromSmarts(scaffold_str)
+        # Scaffold-matching reactants are intentional terminal nodes here and
+        # are never added to self.solved; best_route uses this to suppress its
+        # invariant warning for them.
+        self._context_scaffold = scaffold
 
         for smi in smiles:
             solution = defaultdict(list)
@@ -87,6 +92,7 @@ class Expander:
             feasible_actions = self._determine_feasible_actions(mol)
             score = self._solve_and_score_routes(mol, scaffold, feasible_actions)
             rows = self._update(mol, smi, score, solution, rows)
+        self._context_scaffold = None
         df = pd.DataFrame(rows)
         return df
 
@@ -158,7 +164,7 @@ class Expander:
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
-                if mol not in self.stock: #TODO: Why is this needed?
+                if mol not in self.stock and not self._matches_context_scaffold(mol):
                     self._logger.warning(
                         f"best_route: {mol.smiles} missing from solved but not in stock — "
                         "route truncated (cache/solved invariant violated)")
@@ -238,6 +244,11 @@ class Expander:
                 self._save_to_redis()
         rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
         return rows
+
+    def _matches_context_scaffold(self, mol: TreeMolecule) -> bool:
+        if self._context_scaffold is None:
+            return False
+        return bool(mol.rd_mol.GetSubstructMatch(self._context_scaffold))
 
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:
         """Pre-populate local caches from Redis for the root molecule subtree."""
