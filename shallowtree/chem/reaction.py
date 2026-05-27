@@ -431,6 +431,7 @@ class TemplatedRetroReaction(RetroReaction):
                     sanitize=False,
                     mapping_update_callback=update_func,
                 )
+                new_mol._is_sanitized = True #TODO: find a better solution
                 intern_cache[ik] = new_mol
                 return new_mol
 
