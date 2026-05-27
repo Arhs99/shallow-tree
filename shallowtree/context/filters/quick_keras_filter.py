@@ -4,7 +4,7 @@ from typing import List, Any, Tuple
 
 import numpy as np
 
-from shallowtree.chem import RetroReaction
+from shallowtree.chem.reaction import RetroReaction
 from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.context.policy.utils import _make_fingerprint

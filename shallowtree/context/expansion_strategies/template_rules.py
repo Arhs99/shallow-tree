@@ -4,7 +4,8 @@ from typing import Sequence, Optional, List
 
 import pandas as pd
 
-from shallowtree.chem import TreeMolecule, RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 
 

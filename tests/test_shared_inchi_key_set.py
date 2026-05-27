@@ -94,7 +94,3 @@ class TestSharedInchiKeySetCrossProcess(unittest.TestCase):
             self.assertEqual(results, [True, True, True, False])
         finally:
             s.unlink()
-
-
-if __name__ == "__main__":
-    unittest.main()

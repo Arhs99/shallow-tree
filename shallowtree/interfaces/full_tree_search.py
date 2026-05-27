@@ -23,7 +23,7 @@ from typing import List, Optional
 import pandas as pd
 from rdkit import Chem
 
-from shallowtree.chem import TreeMolecule
+from shallowtree.chem.mol import TreeMolecule
 from shallowtree.configs.application_configuration import ApplicationConfiguration
 from shallowtree.configs.cache_configuration import CacheConfiguration
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration
@@ -43,16 +43,16 @@ from shallowtree.utils.lru import LRUCache
 
 class Expander:
 
-    def __init__(self, app_config: ApplicationConfiguration, prebuilt_stock: Optional[Stock] = None):
+    def __init__(self, app_config: ApplicationConfiguration):
         self._logger = logger()
         self.app_config = app_config
 
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
-        if prebuilt_stock is not None:
-            self.stock = prebuilt_stock
-        else:
-            self.stock = self._setup_stock(app_config.stock)
+
+        self.stock = self._setup_stock(app_config.stock) if app_config.prebuilt_stock is None \
+            else app_config.prebuilt_stock
+
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
         self.rules_expansion = self._setup_rules_expansion(app_config)

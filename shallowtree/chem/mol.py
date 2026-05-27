@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Dict, Union, Tuple, Sequence, List, Callable
 
 import numpy as np
 from rdkit import Chem, DataStructs
@@ -9,17 +9,9 @@ from rdkit.Chem import AllChem, Descriptors
 from shallowtree.utils.bonds import sort_bonds
 from shallowtree.utils.exceptions import MoleculeException
 
+
 if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import (
-        Callable,
-        Dict,
-        List,
-        Optional,
-        RdMol,
-        Sequence,
-        Tuple,
-        Union,
-    )
+    from rdkit.Chem.rdchem.Mol import Mol as RdMol
 
 
 class Molecule:
@@ -267,13 +259,13 @@ class TreeMolecule(Molecule):
     # pylint: disable=too-many-arguments
     def __init__(
             self,
-            parent: Optional["TreeMolecule"],
+            parent: Optional[TreeMolecule],
             transform: Optional[int] = None,
             rd_mol: Optional[RdMol] = None,
             smiles: Optional[str] = None,
             sanitize: bool = False,
-            mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
-            intern_cache: Optional[Dict[str, "TreeMolecule"]] = None,
+            mapping_update_callback: Optional[Callable[[TreeMolecule], None]] = None,
+            intern_cache: Optional[Dict[str, TreeMolecule]] = None,
     ) -> None:
         super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
         self.parent = parent
@@ -286,7 +278,7 @@ class TreeMolecule(Molecule):
         # TreeMolecule reachable from the root can look itself up by inchi_key.
         # Step 1: plumb only. Lookups will be added in a follow-up.
         if parent is not None:
-            self.intern_cache: Optional[Dict[str, "TreeMolecule"]] = parent.intern_cache
+            self.intern_cache: Optional[Dict[str, TreeMolecule]] = parent.intern_cache
         else:
             self.intern_cache = intern_cache
 
@@ -392,8 +384,3 @@ class UniqueMolecule(Molecule):
 
     def __eq__(self, _) -> bool:
         return False
-
-
-def none_molecule() -> UniqueMolecule:
-    """Return an empty molecule"""
-    return UniqueMolecule(rd_mol=Chem.MolFromSmiles(""))

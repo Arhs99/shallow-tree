@@ -6,7 +6,7 @@ import copy
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from shallowtree.chem import Molecule
+from shallowtree.chem.mol import Molecule
 from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.stock.queries import (

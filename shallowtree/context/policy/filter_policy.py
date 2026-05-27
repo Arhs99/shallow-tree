@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from shallowtree.chem import RetroReaction
+from shallowtree.chem.reaction import RetroReaction
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.utils.exceptions import PolicyException

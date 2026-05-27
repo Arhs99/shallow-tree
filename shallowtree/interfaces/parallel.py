@@ -7,6 +7,7 @@ from pathos.multiprocessing import ProcessPool
 from shallowtree.configs.input_configuration import InputConfiguration
 
 from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.config import Configuration
 from shallowtree.context.stock.queries import InMemoryInchiKeyQuery
 from shallowtree.context.stock.shared_inchi_key_set import SharedInchiKeySet
@@ -21,7 +22,7 @@ def clone_config(input_config: InputConfiguration, smiles:List[str]):
     return clone
 
 
-def _build_shared_stock(stock_configs) -> SharedInchiKeySet:
+def _build_shared_stock(stock_configs: List[StockConfiguration]) -> SharedInchiKeySet:
     """Load all stock inchi keys in the parent and pack them into a single
     SharedInchiKeySet. Workers attach to this block by name, paying for one
     physical copy in /dev/shm rather than one heap copy per worker."""
@@ -33,9 +34,7 @@ def _build_shared_stock(stock_configs) -> SharedInchiKeySet:
             price_col=cfg.price_col,
         )
         keys.extend(q.stock_inchikeys)
-        del q
     shared = SharedInchiKeySet.build(keys)
-    del keys
     return shared
 
 
@@ -59,7 +58,8 @@ def standard_search(input_config: InputConfiguration):
 
     def parallel_run(input_c):
         stock = _build_worker_stock(shm_name, shm_count)
-        expander = Expander(app_config, prebuilt_stock=stock)
+        app_config.prebuilt_stock = stock
+        expander = Expander(app_config)
         expander.expansion_policy.select_first()
         expander.filter_policy.select_first()
         expander.stock.select_first()
@@ -89,7 +89,8 @@ def scaffold_search(input_config: InputConfiguration):
 
     def parallel_run(input_c):
         stock = _build_worker_stock(shm_name, shm_count)
-        expander = Expander(app_config, prebuilt_stock=stock)
+        app_config.prebuilt_stock = stock
+        expander = Expander(app_config)
         expander.expansion_policy.select_first()
         expander.filter_policy.select_first()
         expander.stock.select_first()
@@ -110,6 +111,11 @@ def scaffold_search(input_config: InputConfiguration):
 def sequential_search(input_config: InputConfiguration):
     config_dict = Configuration.from_json(input_config.app_configuration_path)
     app_config = ApplicationConfiguration(**config_dict)
+
+    shared = _build_shared_stock(app_config.stock)
+    shm_name, shm_count = shared.shm_name, len(shared)
+    stock = _build_worker_stock(shm_name, shm_count)
+    app_config.prebuilt_stock = stock
 
     expander = Expander(app_config)
     expander.expansion_policy.select_first()

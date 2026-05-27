@@ -9,18 +9,18 @@ import shutil
 import tempfile
 from typing import TYPE_CHECKING
 
-from jinja2 import Template
 from PIL import Image, ImageDraw
+from jinja2 import Template
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-from shallowtree.chem import Molecule
+from shallowtree.chem.mol import Molecule
 from shallowtree.utils.paths import data_path
 
 if TYPE_CHECKING:
     import networkx as nx
 
-    from shallowtree.chem import FixedRetroReaction, RetroReaction, UniqueMolecule
+    from shallowtree.chem.reaction import FixedRetroReaction
 
     from shallowtree.utils.type_utils import (
         Any,

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List, Sequence, Optional, Tuple
 from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
-    from shallowtree.chem import TreeMolecule
+    from shallowtree.chem.mol import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
 
 
