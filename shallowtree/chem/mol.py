@@ -267,13 +267,13 @@ class TreeMolecule(Molecule):
     # pylint: disable=too-many-arguments
     def __init__(
             self,
-            parent: Optional["TreeMolecule"],
+            parent: Optional[TreeMolecule],
             transform: Optional[int] = None,
             rd_mol: Optional[RdMol] = None,
             smiles: Optional[str] = None,
             sanitize: bool = False,
-            mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
-            intern_cache: Optional[Dict[str, "TreeMolecule"]] = None,
+            mapping_update_callback: Optional[Callable[[TreeMolecule], None]] = None,
+            intern_cache: Optional[Dict[str, TreeMolecule]] = None,
     ) -> None:
         super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
         self.parent = parent
@@ -286,7 +286,7 @@ class TreeMolecule(Molecule):
         # TreeMolecule reachable from the root can look itself up by inchi_key.
         # Step 1: plumb only. Lookups will be added in a follow-up.
         if parent is not None:
-            self.intern_cache: Optional[Dict[str, "TreeMolecule"]] = parent.intern_cache
+            self.intern_cache: Optional[Dict[str, TreeMolecule]] = parent.intern_cache
         else:
             self.intern_cache = intern_cache
 

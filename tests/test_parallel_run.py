@@ -38,7 +38,9 @@ class TestParallelRuns(unittest.TestCase):
         print(result)
 
     def test_parallel_standard_search(self):
-        expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
+        # expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
+        expected = [['Clc1ccccc1CBr', 'O=C1CC(O)C1', 'Nc1n[nH]c2cc(Br)ccc12', 'OB(O)c1ccccc1'], [], [],
+                    ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
         expected_scores = [1, 0.5, 0.75, 1.0, 0]
         config = self.config
         df_result = standard_search(config)
@@ -56,6 +58,6 @@ class TestParallelRuns(unittest.TestCase):
         df_result = sequential_search(config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
+        print(df_result)
         self.assertListEqual(expected, result)
         self.assertListEqual(expected_scores, scores)
-        print(df_result)

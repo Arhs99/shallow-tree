@@ -53,7 +53,3 @@ class TestLRUCache(unittest.TestCase):
     def test_zero_maxsize_rejected(self):
         with self.assertRaises(ValueError):
             LRUCache(maxsize=0)
-
-
-if __name__ == "__main__":
-    unittest.main()

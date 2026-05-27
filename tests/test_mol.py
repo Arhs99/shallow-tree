@@ -211,6 +211,3 @@ class TestUniqueMolecule(unittest.TestCase):
         s = {mol1, mol2}
         self.assertEqual(len(s), 2)
 
-
-if __name__ == "__main__":
-    unittest.main()

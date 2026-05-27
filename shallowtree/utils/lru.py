@@ -9,13 +9,12 @@ LRU revert; see plans/lru_cache_attempt.md).
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Generic, Optional, TypeVar
+from typing import Optional
 
-K = TypeVar("K")
-V = TypeVar("V")
+# from shallowtree.chem.mol import TreeMolecule #TODO: fix the circular dependency
 
 
-class LRUCache(Generic[K, V]):
+class LRUCache:
     """Bounded least-recently-used cache."""
 
     __slots__ = ("_maxsize", "_data")
@@ -24,15 +23,15 @@ class LRUCache(Generic[K, V]):
         if maxsize < 1:
             raise ValueError("maxsize must be >= 1")
         self._maxsize = maxsize
-        self._data: OrderedDict[K, V] = OrderedDict()
+        self._data: OrderedDict[str, "TreeMolecule"] = OrderedDict()
 
-    def get(self, key: K, default: Optional[V] = None) -> Optional[V]:
+    def get(self, key: str, default: Optional["TreeMolecule"] = None) -> Optional["TreeMolecule"]:
         if key in self._data:
             self._data.move_to_end(key)
             return self._data[key]
         return default
 
-    def __setitem__(self, key: K, value: V) -> None:
+    def __setitem__(self, key: str, value: "TreeMolecule") -> None:
         if key in self._data:
             self._data.move_to_end(key)
             self._data[key] = value

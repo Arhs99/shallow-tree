@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from rdchiral import main as rdc
 
+from shallowtree.utils.lru import LRUCache
+
 try:
     from rdchiral.bonds import get_atoms_across_double_bonds
     from rdchiral.initialization import BondDirOpposite
@@ -381,15 +383,13 @@ class TemplatedRetroReaction(RetroReaction):
         except:  # pylint: disable=bare-except
             reactants_list = []
 
-        intern_cache = self.mol.intern_cache
-
         outcomes = []
         for reactants in reactants_list:
             exclude_nums = set(self.mol.mapping_to_index.keys())
             update_func = partial(self._inherit_atom_mapping, exclude_nums=exclude_nums)
             try:
                 mols = tuple(
-                    self._make_or_intern_reactant(rdmol, update_func, intern_cache)
+                    self._make_or_intern_reactant(rdmol, update_func, self.mol.intern_cache)
                     for rdmol in reactants
                 )
             except MoleculeException:
@@ -400,12 +400,7 @@ class TemplatedRetroReaction(RetroReaction):
 
         return self._reactants
 
-    def _make_or_intern_reactant(
-            self,
-            rdmol,
-            update_func,
-            intern_cache,
-    ) -> "TreeMolecule":
+    def _make_or_intern_reactant(self, rdmol, update_func, intern_cache: LRUCache|None) -> TreeMolecule:
         """Construct a reactant TreeMolecule, reusing an interned instance if one
         already exists for the same inchi_key in ``intern_cache``.
 
@@ -415,35 +410,35 @@ class TemplatedRetroReaction(RetroReaction):
         previously-seen instance and skips the rest of TreeMolecule init
         (deep copy of mapped_mol, mapped_smiles compute, remove_atom_mapping).
         """
-        if intern_cache is None:
-            return TreeMolecule(
-                parent=self.mol,
-                rd_mol=rdmol,
-                sanitize=True,
-                mapping_update_callback=update_func,
-            )
+        if intern_cache:
+            try:
+                Chem.SanitizeMol(rdmol)
+            except Exception as err:  # noqa: BLE001 — RDKit raises many things
+                raise MoleculeException(f"sanitize failed before interning: {err}") from err
+            ik = Chem.MolToInchiKey(rdmol)
+            if not ik:
+                raise MoleculeException("could not compute inchi_key for interning")
 
-        try:
-            Chem.SanitizeMol(rdmol)
-        except Exception as err:  # noqa: BLE001 — RDKit raises many things
-            raise MoleculeException(f"sanitize failed before interning: {err}") from err
-        ik = Chem.MolToInchiKey(rdmol)
-        if not ik:
-            raise MoleculeException("could not compute inchi_key for interning")
+            cached = intern_cache.get(ik, None)
 
-        cached = intern_cache.get(ik)
-        if cached is not None:
-            return cached
+            if cached:
+                return cached
+            else:
+                new_mol = TreeMolecule(
+                    parent=self.mol,
+                    rd_mol=rdmol,
+                    sanitize=False,
+                    mapping_update_callback=update_func,
+                )
+                intern_cache[ik] = new_mol
+                return new_mol
 
-        new_mol = TreeMolecule(
+        return TreeMolecule(
             parent=self.mol,
             rd_mol=rdmol,
-            sanitize=False,
+            sanitize=True,
             mapping_update_callback=update_func,
         )
-        new_mol._is_sanitized = True  # pre-sanitized above for the inchi_key lookup
-        intern_cache[ik] = new_mol
-        return new_mol
 
     def _make_smiles(self):
         return AllChem.ReactionToSmiles(self.rd_reaction)
