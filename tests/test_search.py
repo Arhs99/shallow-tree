@@ -376,6 +376,64 @@ class TestBestRoute(unittest.TestCase):
         self.assertEqual(df.iloc[0]['score'], 0.0)
         self.assertNotIn(parent.inchi_key, exp.solved)
 
+    def test_relaxed_boundary_accepts_amide_coupling_amine_scaffold(self):
+        """Amide coupling retro: R-C(=O)NH-R' -> R-COOH + H2N-R'. With the
+        scaffold marking the amine side ([*]Nc1ccccc1), the wildcard sits
+        where the carbonyl C attaches. The aniline reactant matches
+        scaffold-minus-wildcard, and the wildcard's atom (carbonyl C) is
+        absent from the aniline — so the relaxed check fires."""
+        from shallowtree.chem.reaction import TemplatedRetroReaction
+
+        smi = "CCC(=O)Nc1ccccc1"  # N-phenylpropanamide
+        scaffold = "[*]Nc1ccccc1"
+        amide = ("([C:1](=[O:2])-[NH;D2;+0:3]-[#6:4])"
+                 ">>([OH]-[C:1]=[O:2]).([NH2;D1;+0:3]-[#6:4])")
+
+        parent = TreeMolecule(parent=None, smiles=smi)
+        action = TemplatedRetroReaction(
+            parent, smarts=amide,
+            metadata={'classification': 'Amide coupling', 'policy_name': 'rules'},
+        )
+
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_expander(stock=stock)
+        exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
+        exp.rules_expansion.get_actions = MagicMock(return_value=[action])
+
+        df = exp.context_search([smi], scaffold_str=scaffold, max_depth=1)
+        self.assertGreater(df.iloc[0]['score'], 0.9)
+        self.assertIn(parent.inchi_key, exp.solved)
+
+    def test_relaxed_boundary_accepts_amide_coupling_acid_scaffold(self):
+        """Same amide retro but with the scaffold marking the carboxylic
+        acid side ([*]C(=O)c1ccccc1, wildcard at the amine N). The
+        benzoic-acid reactant matches scaffold-minus-wildcard, and the
+        wildcard's atom (the N) is absent from it — so the relaxed check
+        fires from the acid side."""
+        from shallowtree.chem.reaction import TemplatedRetroReaction
+
+        smi = "CCNC(=O)c1ccccc1"  # N-ethylbenzamide
+        scaffold = "[*]C(=O)c1ccccc1"
+        amide = ("([C:1](=[O:2])-[NH;D2;+0:3]-[#6:4])"
+                 ">>([OH]-[C:1]=[O:2]).([NH2;D1;+0:3]-[#6:4])")
+
+        parent = TreeMolecule(parent=None, smiles=smi)
+        action = TemplatedRetroReaction(
+            parent, smarts=amide,
+            metadata={'classification': 'Amide coupling', 'policy_name': 'rules'},
+        )
+
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_expander(stock=stock)
+        exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
+        exp.rules_expansion.get_actions = MagicMock(return_value=[action])
+
+        df = exp.context_search([smi], scaffold_str=scaffold, max_depth=1)
+        self.assertGreater(df.iloc[0]['score'], 0.9)
+        self.assertIn(parent.inchi_key, exp.solved)
+
     def test_parse_scaffold_query_handles_kekule_form(self):
         """Kekulé-written scaffolds must match aromatic targets the same way
         aromatic-lowercase scaffolds do, since MolFromSmarts takes bond orders
