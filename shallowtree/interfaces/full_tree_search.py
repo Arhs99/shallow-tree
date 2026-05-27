@@ -262,14 +262,43 @@ class Expander:
 
         return feasible_actions
 
+    @staticmethod
+    def _find_strict_boundary_match(reactants, scaffold, root_match):
+        # Strict boundary check: a heavy-atom-for-heavy-atom swap at the
+        # scaffold edge (Suzuki / Buchwald-Hartwig style).
+        for r in reactants:
+            r_match = set(r.index_to_mapping[x] for x in r.rd_mol.GetSubstructMatch(scaffold))
+            if r_match and len(r_match ^ root_match) == 2:
+                return r
+        return None
+
+    @staticmethod
+    def _find_relaxed_boundary_match(reactants, scaffold_stripped, root_match, wildcard_mapping):
+        # Relaxed boundary check: catches retros that produce an H-terminated
+        # end at the wildcard position (Williamson ether, amide hydrolysis,
+        # ...). Requires that the only atom missing from the reactant's
+        # scaffold-minus-wildcard match is exactly the wildcard's mapping in
+        # the root, AND that the wildcard's atom is gone from the reactant
+        # entirely (not merely absent from this particular match) — otherwise
+        # a disconnection elsewhere that leaves the scaffold intact would pass.
+        if wildcard_mapping is None or scaffold_stripped is None:
+            return None
+        for r in reactants:
+            if wildcard_mapping in r.index_to_mapping.values():
+                continue
+            for hit in r.rd_mol.GetSubstructMatches(scaffold_stripped):
+                r_strip = set(
+                    r.index_to_mapping[i] for i in hit if i in r.index_to_mapping
+                )
+                if r_strip and root_match - r_strip == {wildcard_mapping}:
+                    return r
+        return None
+
     def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List,
                                 wildcard_info=None) -> float:
         score = 0
         root_hit = mol.rd_mol.GetSubstructMatch(scaffold)
         root_match = set(mol.index_to_mapping[x] for x in root_hit)
-        # The wildcard's atom mapping in the root, used by the relaxed
-        # boundary check below. None when the scaffold has no single
-        # leaf wildcard, or the matched atom carries no mapping.
         wildcard_mapping = None
         scaffold_stripped = None
         if wildcard_info is not None and root_hit:
@@ -278,41 +307,25 @@ class Expander:
             wildcard_mapping = mol.index_to_mapping.get(w_atom_idx)
 
         for action in feasible_actions:
-            reactants = action.reactants
-            chosen = None
-            # Strict boundary check: a heavy-atom-for-heavy-atom swap at
-            # the scaffold edge (Suzuki / Buchwald-Hartwig style).
-            for r in reactants[0]:
-                r_match = set(r.index_to_mapping[x] for x in r.rd_mol.GetSubstructMatch(scaffold))
-                if r_match and len(r_match ^ root_match) == 2:
-                    chosen = r
-                    break
-            # Relaxed boundary check: catches retros that produce an
-            # H-terminated end at the wildcard position (Williamson ether,
-            # amide hydrolysis, ...). Requires that the only atom missing
-            # from the reactant's scaffold-minus-wildcard match is exactly
-            # the wildcard's mapping in the root, AND that the wildcard's
-            # atom is gone from the reactant entirely (not merely absent
-            # from this particular match) — otherwise a disconnection
-            # elsewhere that leaves the scaffold intact would pass.
-            if chosen is None and wildcard_mapping is not None:
-                for r in reactants[0]:
-                    if wildcard_mapping in r.index_to_mapping.values():
-                        continue
-                    for hit in r.rd_mol.GetSubstructMatches(scaffold_stripped):
-                        r_strip = set(
-                            r.index_to_mapping[i] for i in hit if i in r.index_to_mapping
-                        )
-                        if r_strip and root_match - r_strip == {wildcard_mapping}:
-                            chosen = r
-                            break
-                    if chosen is not None:
-                        break
-            if chosen is not None:
-                score_list = [self.req_search_tree(x, 1) for x in reactants[0] if x != chosen]
-                score = sum(score_list) / (len(reactants[0]) - 1)
-                if score > self.app_config.search.score_acceptance_threshold:
-                    self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
+            reactants = action.reactants[0]
+            strict = self._find_strict_boundary_match(reactants, scaffold, root_match)
+            relaxed = (
+                self._find_relaxed_boundary_match(
+                    reactants, scaffold_stripped, root_match, wildcard_mapping
+                )
+                if strict is None
+                else None
+            )
+            if strict is not None:
+                chosen = strict
+            elif relaxed is not None:
+                chosen = relaxed
+            else:
+                continue
+            score_list = [self.req_search_tree(x, 1) for x in reactants if x != chosen]
+            score = sum(score_list) / (len(reactants) - 1)
+            if score > self.app_config.search.score_acceptance_threshold:
+                self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
         return score
 
     def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List) -> List:
