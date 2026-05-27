@@ -35,6 +35,7 @@ def _make_expander(**overrides):
         mock_re.return_value = mock_rules
 
         mock_config = MagicMock()
+        mock_config.search.score_acceptance_threshold = 0.9
         from shallowtree.interfaces.full_tree_search import Expander
         exp = Expander(mock_config)
 
