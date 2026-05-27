@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Optional
 
-# from shallowtree.chem.mol import TreeMolecule #TODO: fix the circular dependency
+from shallowtree.chem.mol import TreeMolecule #TODO: fix the circular dependency
 
 
 class LRUCache:

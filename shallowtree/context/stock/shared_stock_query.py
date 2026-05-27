@@ -7,7 +7,7 @@ the parent process.
 
 from __future__ import annotations
 
-from shallowtree.chem import Molecule
+from shallowtree.chem.mol import Molecule
 from shallowtree.context.stock.queries import StockQueryMixin
 from shallowtree.context.stock.shared_inchi_key_set import SharedInchiKeySet
 

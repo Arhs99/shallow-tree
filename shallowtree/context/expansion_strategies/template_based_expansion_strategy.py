@@ -5,7 +5,8 @@ from typing import Optional, Dict, Tuple, Sequence, List
 import numpy as np
 import pandas as pd
 
-from shallowtree.chem import TreeMolecule, RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 from shallowtree.context.policy.utils import _make_fingerprint

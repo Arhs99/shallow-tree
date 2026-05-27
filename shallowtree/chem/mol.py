@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Dict, Union, Tuple, Sequence, List, Callable
 
 import numpy as np
 from rdkit import Chem, DataStructs
@@ -9,17 +9,9 @@ from rdkit.Chem import AllChem, Descriptors
 from shallowtree.utils.bonds import sort_bonds
 from shallowtree.utils.exceptions import MoleculeException
 
+
 if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import (
-        Callable,
-        Dict,
-        List,
-        Optional,
-        RdMol,
-        Sequence,
-        Tuple,
-        Union,
-    )
+    from rdkit.Chem.rdchem.Mol import Mol as RdMol
 
 
 class Molecule:
@@ -392,8 +384,3 @@ class UniqueMolecule(Molecule):
 
     def __eq__(self, _) -> bool:
         return False
-
-
-def none_molecule() -> UniqueMolecule:
-    """Return an empty molecule"""
-    return UniqueMolecule(rd_mol=Chem.MolFromSmiles(""))

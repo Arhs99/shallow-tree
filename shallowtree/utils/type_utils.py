@@ -11,13 +11,10 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 from PIL.Image import Image
 from rdkit import Chem
-from rdkit.Chem import rdChemReactions
-from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 StrDict = Dict[str, Any]
-RdMol = Chem.rdchem.Mol
+# RdMol = Chem.rdchem.Mol
 RdReaction = Chem.rdChemReactions.ChemicalReaction
-BitVector = ExplicitBitVect
 PilImage = Image
 PilColor = Union[str, Tuple[int, int, int]]
 FrameColors = Optional[Dict[bool, PilColor]]

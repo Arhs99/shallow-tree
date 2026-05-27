@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from rdchiral import main as rdc
 
+from shallowtree.utils.exceptions import MoleculeException
 from shallowtree.utils.lru import LRUCache
 
 try:
@@ -23,9 +24,9 @@ from rdkit.Chem.rdchem import BondDir, BondStereo, ChiralType
 
 from shallowtree.chem.mol import (
     Molecule,
-    MoleculeException,
     TreeMolecule,
 )
+
 from shallowtree.utils.logging import logger
 
 
