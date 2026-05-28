@@ -18,10 +18,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pandas as pd
 from rdkit import Chem
+from rdkit.Chem.rdchem import Mol
 
 from shallowtree.chem.mol import TreeMolecule
 from shallowtree.configs.application_configuration import ApplicationConfiguration
@@ -65,12 +66,8 @@ class Expander:
         # working set; the multiplicity histogram shows ~83 % of dedup is
         # concentrated in the top few hundred most-duplicated InChI keys.
         self._intern_cache: LRUCache = LRUCache(maxsize=2000)
-        self._timers = {}
         self.BBs = []
-        self._counter = 0
         self._cache_counter = 0
-        self._context_scaffold = None
-        self._context_scaffold_stripped = None
 
     @staticmethod
     def _parse_scaffold_query(scaffold_str: str):
@@ -106,34 +103,28 @@ class Expander:
     def context_search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
         self.max_depth = max_depth
         rows = []
-        scaffold = self._parse_scaffold_query(scaffold_str)
+        context_scaffold = self._parse_scaffold_query(scaffold_str)
         # Scaffold-matching reactants are intentional terminal nodes here and
         # are never added to self.solved; best_route uses this to suppress its
         # invariant warning for them.
-        self._context_scaffold = scaffold
-        wildcard_info = self._scaffold_wildcard_info(scaffold)
+        wildcard_info = self._scaffold_wildcard_info(context_scaffold)
         # Used by _matches_context_scaffold to suppress best_route warnings
         # for relaxed-branch terminals (e.g. the phenol on the scaffold side
         # of a Williamson cut, which carries an OH where the wildcard sat
         # in the root and so doesn't match the strict scaffold).
-        self._context_scaffold_stripped = (
-            wildcard_info[1] if wildcard_info is not None else None
-        )
+        context_scaffold_stripped = None if wildcard_info is None else wildcard_info[1]
 
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
-            self._counter = 0
             self._cache_counter = 0
 
             # Pre-populate from Redis if available
             self._load_from_redis(mol)
             feasible_actions = self._determine_feasible_actions(mol)
-            score = self._solve_and_score_routes(mol, scaffold, feasible_actions, wildcard_info)
-            rows = self._update(mol, smi, score, solution, rows)
-        self._context_scaffold = None
-        self._context_scaffold_stripped = None
+            score = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
+            rows = self._update(mol, smi, score, solution, rows, context_scaffold, context_scaffold_stripped)
         df = pd.DataFrame(rows)
         return df
 
@@ -144,7 +135,6 @@ class Expander:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
             self.BBs = []
-            self._counter = 0
             self._cache_counter = 0
 
             self._load_from_redis(mol)
@@ -157,7 +147,6 @@ class Expander:
     def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
         if depth > self.max_depth:
             return 0.0
-        self._counter += 1
 
         if mol.inchi_key in self.cache:
             self._cache_counter += 1
@@ -201,11 +190,12 @@ class Expander:
             self.redis_cache.set_cache(mol.inchi_key, depth, score)
         return score
 
-    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict):
+    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, context_scaffold: Mol,
+                   context_scaffold_stripped: Mol):
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
-                if mol not in self.stock and not self._matches_context_scaffold(mol):
+                if mol not in self.stock and not self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped):
                     self._logger.warning(
                         f"best_route: {mol.smiles} missing from solved but not in stock — "
                         "route truncated (cache/solved invariant violated)")
@@ -216,7 +206,7 @@ class Expander:
                 reactants = '.'.join([m.smiles for m in rxn])
                 tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
                 for x in rxn:
-                    self.best_route(x, depth + 1, tree)
+                    self.best_route(x, depth + 1, tree, context_scaffold, context_scaffold_stripped)
                 return
 
     def _determine_rules_and_actions(self, mol: TreeMolecule):
@@ -294,31 +284,33 @@ class Expander:
                     return r
         return None
 
-    def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List,
-                                wildcard_info=None) -> float:
-        score = 0
-        root_hit = mol.rd_mol.GetSubstructMatch(scaffold)
-        root_match = set(mol.index_to_mapping[x] for x in root_hit)
+    def _create_wildcard_mapping(self, mol: TreeMolecule, wildcard_info, root_hit) -> Tuple:
         wildcard_mapping = None
         scaffold_stripped = None
         if wildcard_info is not None and root_hit:
             wildcard_idx, scaffold_stripped = wildcard_info
             w_atom_idx = root_hit[wildcard_idx]
             wildcard_mapping = mol.index_to_mapping.get(w_atom_idx)
+        return wildcard_mapping, scaffold_stripped
+
+    def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List,
+                                wildcard_info=None) -> float:
+        score = 0
+        root_hit = mol.rd_mol.GetSubstructMatch(scaffold)
+        root_match = set(mol.index_to_mapping[x] for x in root_hit)
+        wildcard_mapping, scaffold_stripped = self._create_wildcard_mapping(mol, wildcard_info, root_hit)
 
         for action in feasible_actions:
             reactants = action.reactants[0]
             strict = self._find_strict_boundary_match(reactants, scaffold, root_match)
             relaxed = (
-                self._find_relaxed_boundary_match(
-                    reactants, scaffold_stripped, root_match, wildcard_mapping
-                )
+                self._find_relaxed_boundary_match(reactants, scaffold_stripped, root_match, wildcard_mapping)
                 if strict is None
                 else None
             )
-            if strict is not None:
+            if strict:
                 chosen = strict
-            elif relaxed is not None:
+            elif relaxed :
                 chosen = relaxed
             else:
                 continue
@@ -328,24 +320,25 @@ class Expander:
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
         return score
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List) -> List:
+    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List,
+                context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
         if score > self.app_config.search.score_acceptance_threshold:
-            self.best_route(mol, 0, tree)
+            self.best_route(mol, 0, tree, context_scaffold, context_scaffold_stripped)
             if self.redis_cache:  # Persist to Redis if available and successful
                 self._save_to_redis()
         rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
         return rows
 
-    def _matches_context_scaffold(self, mol: TreeMolecule) -> bool:
-        if self._context_scaffold is None:
+    def _matches_context_scaffold(self, mol: TreeMolecule, context_scaffold: Mol, context_scaffold_stripped: Mol) -> bool:
+        if context_scaffold is None:
             return False
-        if mol.rd_mol.GetSubstructMatch(self._context_scaffold):
+        if mol.rd_mol.GetSubstructMatch(context_scaffold):
             return True
         # Relaxed-branch terminals carry an H where the wildcard sat (Williamson
         # phenol etc.) and don't match the strict scaffold — match the stripped
         # form instead so best_route doesn't warn on them.
-        if self._context_scaffold_stripped is not None:
-            return bool(mol.rd_mol.GetSubstructMatch(self._context_scaffold_stripped))
+        if context_scaffold_stripped:
+            return bool(mol.rd_mol.GetSubstructMatch(context_scaffold_stripped))
         return False
 
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:

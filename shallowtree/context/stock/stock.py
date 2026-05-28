@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import Set, Dict, Any, List, Optional, Union
 
 from shallowtree.chem.mol import Molecule
 from shallowtree.configs.stock_configuration import StockConfiguration
@@ -14,17 +14,6 @@ from shallowtree.context.stock.queries import (
     StockQueryMixin,
 )
 from shallowtree.utils.exceptions import StockException
-
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import (
-        Any,
-        Dict,
-        List,
-        Optional,
-        Set,
-        StrDict,
-        Union,
-    )
 
 
 class Stock(ContextCollection):
@@ -57,7 +46,7 @@ class Stock(ContextCollection):
     def __init__(self) -> None:
         super().__init__()
         self._exclude: Set[str] = set()
-        self._stop_criteria: StrDict = {"amount": None, "price": None, "counts": {}}
+        self._stop_criteria: Dict[str, Any] = {"amount": None, "price": None, "counts": {}}
         self._use_stop_criteria: bool = False
 
     def __contains__(self, mol: Molecule) -> bool:
