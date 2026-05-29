@@ -65,6 +65,7 @@ def _make_filter():
         mock_load.return_value = MockModel()
 
         config = FilterConfiguration(
+            filter_name="test_filter",
             model="mock_model.h5",
             filter_cutoff=0.5,
         )
