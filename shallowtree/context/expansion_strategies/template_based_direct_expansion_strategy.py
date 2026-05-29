@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Sequence, Optional, Tuple, List
 
-from shallowtree.chem import TreeMolecule, RetroReaction, SmilesBasedRetroReaction
+from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.reaction import RetroReaction, SmilesBasedRetroReaction
 from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 
 

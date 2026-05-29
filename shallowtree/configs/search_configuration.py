@@ -2,5 +2,5 @@ from pydantic import BaseModel
 
 
 class SearchConfiguration(BaseModel):
-    algorithm: str
-    time_limit: int = 120
+    time_limit: int = 120 # TODO: review - its not used
+    score_acceptance_threshold: float = 0.9

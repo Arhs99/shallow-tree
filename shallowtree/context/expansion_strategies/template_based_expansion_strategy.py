@@ -5,7 +5,8 @@ from typing import Optional, Dict, Tuple, Sequence, List
 import numpy as np
 import pandas as pd
 
-from shallowtree.chem import TreeMolecule, RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 from shallowtree.context.policy.utils import _make_fingerprint
@@ -126,7 +127,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         else:
             maxidx = len(cumsum)
         maxidx = min(maxidx, self.cutoff_number) or 1
-        return sortidx[:maxidx]
+        return sortidx[:maxidx].copy()
 
     def _load_mask_file(self, maskfile: str) -> np.ndarray:
         self._logger.info(f"Loading masking of templates from {maskfile} to {self.key}")
@@ -143,9 +144,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         for molecule in molecules:
             if molecule.inchi_key in self._cache or molecule.inchi_key in pred_inchis:
                 continue
-            fp_list.append(
-                _make_fingerprint(molecule, self.model, self.chiral_fingerprints)
-            )
+            fp_list.append(_make_fingerprint(molecule, self.model, self.chiral_fingerprints))
             pred_inchis.append(molecule.inchi_key)
 
         if not pred_inchis:

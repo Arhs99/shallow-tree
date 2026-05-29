@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from shallowtree.chem import TreeMolecule
+    from shallowtree.chem.mol import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
     from shallowtree.utils.type_utils import Any, Union
 

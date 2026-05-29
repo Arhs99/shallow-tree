@@ -6,6 +6,8 @@ import argparse
 import importlib
 from typing import Iterable, List
 
+from shallowtree.utils.exceptions import MoleculeException
+
 try:
     import molbloom
 except ImportError:
@@ -16,7 +18,7 @@ else:
 import pandas as pd
 from rdkit import Chem
 
-from shallowtree.chem import Molecule, MoleculeException
+from shallowtree.chem.mol import Molecule
 
 _StrIterator = Iterable[str]
 

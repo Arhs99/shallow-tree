@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Optional, Any, Set
+from typing import Dict, Optional, Any
 
 import pandas as pd
 
-from shallowtree.chem import Molecule
+from shallowtree.chem.mol import Molecule
+from shallowtree.context.stock.packed_inchi_key_set import PackedInchiKeySet
 from shallowtree.utils.exceptions import StockException
 
 
@@ -94,7 +95,7 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
         if ext not in [".h5", ".hdf5", ".csv"]:
             with open(path, "r") as fileobj:
                 inchis = fileobj.read().splitlines()
-            self._stock_inchikeys = frozenset(inchis)
+            self._stock_inchikeys = PackedInchiKeySet.from_iterable(inchis)
             self._price_dict: Dict[str, Any] = {}
             return
 
@@ -105,10 +106,12 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
                 path,
                 usecols=[inchi_key_col, price_col] if price_col else [inchi_key_col],
             )
-        inchis = stock_df[inchi_key_col].values
-        self._stock_inchikeys = frozenset(inchis)
+        self._stock_inchikeys = PackedInchiKeySet.from_iterable(
+            stock_df[inchi_key_col].values
+        )
 
         if price_col is None:
+            del stock_df
             self._price_dict = {}
             return
 
@@ -133,8 +136,8 @@ class InMemoryInchiKeyQuery(StockQueryMixin):
         return len(self._stock_inchikeys)
 
     @property
-    def stock_inchikeys(self) -> Set[str]:
-        """Return the InChiKeys in this stock"""
+    def stock_inchikeys(self) -> PackedInchiKeySet:
+        """Return the InChiKeys in this stock as a packed set."""
         return self._stock_inchikeys
 
     def price(self, mol: Molecule) -> float:
