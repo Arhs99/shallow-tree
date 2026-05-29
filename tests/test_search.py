@@ -257,13 +257,13 @@ class TestBestRoute(unittest.TestCase):
         exp = _make_expander(stock=stock)
         exp.max_depth = 2
         exp.solved = {}
-        exp._context_scaffold = Chem.MolFromSmarts("CCO")
+        context_scaffold = Chem.MolFromSmarts("CCO")
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
         exp.BBs = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree)
+            exp.best_route(mol, 0, tree, context_scaffold=context_scaffold)
         self.assertIn("CCO", exp.BBs)
 
     def test_best_route_silent_for_relaxed_context_scaffold_mol(self):
@@ -281,15 +281,15 @@ class TestBestRoute(unittest.TestCase):
         exp.solved = {}
 
         scaffold = Expander._parse_scaffold_query("[*]Oc1ccccc1")
-        exp._context_scaffold = scaffold
+        # exp._context_scaffold = scaffold
         info = Expander._scaffold_wildcard_info(scaffold)
-        exp._context_scaffold_stripped = info[1]
+        stripped = info[1]
 
         mol = TreeMolecule(parent=None, smiles="Oc1ccccc1")  # phenol
         tree = defaultdict(list)
         exp.BBs = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree)
+            exp.best_route(mol, 0, tree, scaffold, stripped)
         self.assertIn("Oc1ccccc1", exp.BBs)
 
     def test_scaffold_wildcard_info_only_for_single_leaf_wildcard(self):

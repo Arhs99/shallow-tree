@@ -190,8 +190,8 @@ class Expander:
             self.redis_cache.set_cache(mol.inchi_key, depth, score)
         return score
 
-    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, context_scaffold: Mol,
-                   context_scaffold_stripped: Mol):
+    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, context_scaffold: Mol = None,
+                   context_scaffold_stripped: Mol = None):
         while depth <= self.max_depth:
             tup = self.solved.get(mol.inchi_key)
             if tup is None:
