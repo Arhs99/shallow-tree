@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Optional
 
-from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.tree_molecule import TreeMolecule
 
 
 class LRUCache:

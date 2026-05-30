@@ -7,7 +7,7 @@ import json
 import time
 from typing import TYPE_CHECKING
 
-from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.tree_molecule import TreeMolecule
 from shallowtree.utils.exceptions import CacheException
 
 if TYPE_CHECKING:

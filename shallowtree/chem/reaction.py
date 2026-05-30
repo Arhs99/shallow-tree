@@ -22,10 +22,10 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdchem import BondDir, BondStereo, ChiralType
 
-from shallowtree.chem.mol import (
+from shallowtree.chem.molecule import (
     Molecule,
-    TreeMolecule,
 )
+from shallowtree.chem.tree_molecule import TreeMolecule
 
 from shallowtree.utils.logging import logger
 
@@ -41,7 +41,7 @@ def _cached_rdkit_reaction(smarts: str):
 
 
 if TYPE_CHECKING:
-    from shallowtree.chem.mol import UniqueMolecule
+    from shallowtree.chem.unique_molecule import UniqueMolecule
     from shallowtree.utils.type_utils import (
         Any,
         Iterable,

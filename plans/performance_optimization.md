@@ -21,7 +21,7 @@ searchcli (CLI entry) → Expander.search_tree() loops over SMILES
 - `shallowtree/context/policy/filter_strategies.py` — `QuickKerasFilter.batch_feasibility()` (already implemented)
 - `shallowtree/context/policy/expansion_strategies.py` — `TemplateBasedExpansionStrategy.get_actions()`, `_update_cache()`
 - `shallowtree/chem/reaction.py` — `TemplatedRetroReaction._apply_with_rdchiral()` (line 320), `_apply_with_rdkit()` (line 366), `_RdChiralProductWrapper` (line 595)
-- `shallowtree/chem/mol.py` — `TreeMolecule`, `Molecule.inchi_key` (lazy, line 102), `fingerprint()` (cached, line 153)
+- `../shallowtree/chem/molecule.py` — `TreeMolecule`, `Molecule.inchi_key` (lazy, line 102), `fingerprint()` (cached, line 153)
 - `shallowtree/utils/models.py` — `LocalKerasModel`, `LocalOnnxModel`, `ExternalModelViaGRPC`, `ExternalModelViaREST`
 - `shallowtree/context/stock/stock.py` — `Stock.__contains__()` (line 65)
 - `shallowtree/context/stock/queries.py` — `InMemoryInchiKeyQuery.__contains__()` (line 142)
