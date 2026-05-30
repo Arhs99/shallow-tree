@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import List, Sequence, Tuple
-    from shallowtree.chem.mol import TreeMolecule
+    from shallowtree.chem.tree_molecule import TreeMolecule
     from shallowtree.chem.reaction import RetroReaction
 
 

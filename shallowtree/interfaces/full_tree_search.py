@@ -24,7 +24,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem.rdchem import Mol
 
-from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.tree_molecule import TreeMolecule
 from shallowtree.configs.application_configuration import ApplicationConfiguration
 from shallowtree.configs.cache_configuration import CacheConfiguration
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration

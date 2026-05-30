@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from shallowtree.chem.mol import TreeMolecule
+from shallowtree.chem.tree_molecule import TreeMolecule
 from shallowtree.chem.reaction import (
     SmilesBasedRetroReaction,
     TemplatedRetroReaction,

@@ -18,7 +18,7 @@ else:
 import pandas as pd
 from rdkit import Chem
 
-from shallowtree.chem.mol import Molecule
+from shallowtree.chem.molecule import Molecule
 
 _StrIterator = Iterable[str]
 
