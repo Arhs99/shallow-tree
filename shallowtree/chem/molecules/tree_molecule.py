@@ -4,7 +4,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Mol
 
-from shallowtree.chem.molecule import Molecule
+from shallowtree.chem.molecules.molecule import Molecule
 from shallowtree.utils.bonds import sort_bonds
 
 

@@ -22,10 +22,10 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdchem import BondDir, BondStereo, ChiralType
 
-from shallowtree.chem.molecule import (
+from shallowtree.chem.molecules.molecule import (
     Molecule,
 )
-from shallowtree.chem.tree_molecule import TreeMolecule
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
 
 from shallowtree.utils.logging import logger
 
@@ -41,7 +41,7 @@ def _cached_rdkit_reaction(smarts: str):
 
 
 if TYPE_CHECKING:
-    from shallowtree.chem.unique_molecule import UniqueMolecule
+    from shallowtree.chem.molecules.unique_molecule import UniqueMolecule
     from shallowtree.utils.type_utils import (
         Any,
         Iterable,
@@ -326,6 +326,14 @@ class TemplatedRetroReaction(RetroReaction):
         dict_["smarts"] = self.smarts
         return dict_
 
+    def _cached_rdchiral_product_wrapper(self, mol):
+        key = mol.mapped_smiles
+        if key in _rdchiral_product_cache:
+            return _rdchiral_product_cache[key]
+        wrapper = _RdChiralProductWrapper(mol)
+        _rdchiral_product_cache[key] = wrapper
+        return wrapper
+
     def _apply(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
         if self._use_rdchiral:
             return self._apply_with_rdchiral()
@@ -337,7 +345,7 @@ class TemplatedRetroReaction(RetroReaction):
         Will try to sanitize the reactants, and if that fails it will not return that molecule
         """
         reaction = _cached_rdchiral_reaction(self.smarts)
-        rct = _cached_rdchiral_product_wrapper(self.mol)
+        rct = self._cached_rdchiral_product_wrapper(self.mol)
         try:
             reactants = rdc.rdchiralRun(reaction, rct, keep_mapnums=True)
         except RuntimeError as err:
@@ -703,10 +711,3 @@ if RDCHIRAL_CPP:
 _rdchiral_product_cache = {}
 
 
-def _cached_rdchiral_product_wrapper(mol):
-    key = mol.mapped_smiles
-    if key in _rdchiral_product_cache:
-        return _rdchiral_product_cache[key]
-    wrapper = _RdChiralProductWrapper(mol)
-    _rdchiral_product_cache[key] = wrapper
-    return wrapper

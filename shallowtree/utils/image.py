@@ -14,8 +14,8 @@ from jinja2 import Template
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-from shallowtree.chem.molecule import Molecule
-from shallowtree.chem.unique_molecule import UniqueMolecule
+from shallowtree.chem.molecules.molecule import Molecule
+from shallowtree.chem.molecules.unique_molecule import UniqueMolecule
 from shallowtree.utils.paths import data_path
 
 if TYPE_CHECKING:
