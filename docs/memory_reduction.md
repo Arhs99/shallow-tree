@@ -53,7 +53,7 @@ one.
   round-trip, and `remove_atom_mapping` for every cache hit.
 
 Files: `shallowtree/chem/reaction.py` (`_make_or_intern_reactant`),
-`../shallowtree/chem/molecule.py` (`intern_cache` plumbed through the
+`../shallowtree/chem/molecules/molecule.py` (`intern_cache` plumbed through the
 `TreeMolecule` parent chain), `shallowtree/utils/lru.py`.
 
 ## Benchmarks

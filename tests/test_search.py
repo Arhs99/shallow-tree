@@ -6,7 +6,7 @@ import unittest
 from collections import defaultdict
 from unittest.mock import MagicMock, patch
 
-from shallowtree.chem.tree_molecule import TreeMolecule
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
 
 
 def _make_expander(**overrides):
