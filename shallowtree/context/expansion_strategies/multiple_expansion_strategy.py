@@ -4,7 +4,7 @@ from typing import Any, List, Sequence, Optional, Tuple
 
 import numpy as np
 
-from shallowtree.chem.reaction import RetroReaction
+from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy

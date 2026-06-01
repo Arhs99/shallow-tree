@@ -10,7 +10,7 @@ from shallowtree.utils.logging import logger
 
 if TYPE_CHECKING:
     from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-    from shallowtree.chem.reaction import RetroReaction
+    from shallowtree.chem.reactions.retro_reaction import RetroReaction
 
 
 class ExpansionStrategy(abc.ABC):
