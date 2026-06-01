@@ -373,7 +373,7 @@ class TestBestRoute(unittest.TestCase):
         """A Williamson-style retro produces ArOH + alkyl-X. The phenol
         reactant matches scaffold-minus-wildcard, and the wildcard's atom
         (alpha CH2) is absent from the phenol — so the relaxed check fires."""
-        from shallowtree.chem.reaction import TemplatedRetroReaction
+        from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 
         smi = "c1ccc(OCCc2ccccc2)cc1"
         scaffold = "[*]Oc1ccccc1"
@@ -401,7 +401,7 @@ class TestBestRoute(unittest.TestCase):
         atom alive in the scaffold-containing reactant. The relaxed check
         must reject this — otherwise the algorithm accepts any disconnection
         that happens to preserve the phenol core."""
-        from shallowtree.chem.reaction import TemplatedRetroReaction
+        from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 
         smi = "c1ccc(OCCc2ccccc2)cc1"
         scaffold = "[*]Oc1ccccc1"
@@ -433,7 +433,7 @@ class TestBestRoute(unittest.TestCase):
         where the carbonyl C attaches. The aniline reactant matches
         scaffold-minus-wildcard, and the wildcard's atom (carbonyl C) is
         absent from the aniline — so the relaxed check fires."""
-        from shallowtree.chem.reaction import TemplatedRetroReaction
+        from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 
         smi = "CCC(=O)Nc1ccccc1"  # N-phenylpropanamide
         scaffold = "[*]Nc1ccccc1"
@@ -462,7 +462,7 @@ class TestBestRoute(unittest.TestCase):
         benzoic-acid reactant matches scaffold-minus-wildcard, and the
         wildcard's atom (the N) is absent from it — so the relaxed check
         fires from the acid side."""
-        from shallowtree.chem.reaction import TemplatedRetroReaction
+        from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 
         smi = "CCNC(=O)c1ccccc1"  # N-ethylbenzamide
         scaffold = "[*]C(=O)c1ccccc1"

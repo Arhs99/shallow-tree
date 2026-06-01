@@ -8,7 +8,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-    from shallowtree.chem.reaction import RetroReaction
+    from shallowtree.chem.reactions.retro_reaction import RetroReaction
     from shallowtree.utils.type_utils import Any, Union
 
 

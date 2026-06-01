@@ -4,11 +4,11 @@ import unittest
 import numpy as np
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from shallowtree.chem.reaction import (
-    SmilesBasedRetroReaction,
-    TemplatedRetroReaction,
+from shallowtree.chem.reactions.hash_reactions import (
     hash_reactions,
 )
+from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
+from shallowtree.chem.reactions.smiles_based_retro_reaction import SmilesBasedRetroReaction
 
 
 class TestSmilesBasedRetroReaction(unittest.TestCase):

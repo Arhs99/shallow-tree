@@ -21,7 +21,7 @@ from shallowtree.utils.paths import data_path
 if TYPE_CHECKING:
     import networkx as nx
 
-    from shallowtree.chem.reaction import FixedRetroReaction
+    from shallowtree.chem.reactions.fixed_retro_reaction import FixedRetroReaction
 
     from shallowtree.utils.type_utils import (
         Any,

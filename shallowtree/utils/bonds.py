@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import List, Sequence, Tuple
     from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-    from shallowtree.chem.reaction import RetroReaction
+    from shallowtree.chem.reactions.retro_reaction import RetroReaction
 
 
 class BrokenBonds:
