@@ -3,12 +3,13 @@ from __future__ import annotations
 import abc
 from typing import List, Optional, Any, Tuple, Set, Dict
 
+import numpy as np
+
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from shallowtree.chem.reactions.reaction_interface_mixin import _ReactionInterfaceMixin
 from shallowtree.utils.type_utils import StrDict
 
 
-class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
+class RetroReaction(abc.ABC):
     """
     A retrosynthesis reaction. Only a single molecule is the reactant.
 
@@ -158,3 +159,26 @@ class RetroReaction(abc.ABC, _ReactionInterfaceMixin):
                 offset += 1
             atom.SetAtomMapNum(offset)
             exclude_nums.add(offset)
+
+    def reaction_smiles(self) -> str:
+        """
+        Get the reaction SMILES, i.e. the SMILES of the reactants and products joined together
+
+        :return: the SMILES
+        """
+        reactants = ".".join(mol.smiles for mol in self._reactants_getter())  # type: ignore
+        products = ".".join(mol.smiles for mol in self._products_getter())  # type: ignore
+        return f"{reactants}>>{products}"
+
+    def fingerprint(self, radius: int, nbits: Optional[int] = None, chiral: bool = False) -> np.ndarray:
+        """
+        Returns a difference fingerprint
+
+        :param radius: the radius of the fingerprint
+        :param nbits: the length of the fingerprint. If not given it will use RDKit default, defaults to None
+        :param chiral: if True, include chirality information
+        :return: the fingerprint
+        """
+        product_fp = sum(mol.fingerprint(radius, nbits, chiral) for mol in self._products_getter()) # type: ignore
+        reactants_fp = sum(mol.fingerprint(radius, nbits, chiral) for mol in self._reactants_getter()) # type: ignore
+        return reactants_fp - product_fp  # type: ignore

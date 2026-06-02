@@ -4,11 +4,8 @@ import unittest
 import numpy as np
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from shallowtree.chem.reactions.hash_reactions import (
-    hash_reactions,
-)
-from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 from shallowtree.chem.reactions.smiles_based_retro_reaction import SmilesBasedRetroReaction
+from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
 
 
 class TestSmilesBasedRetroReaction(unittest.TestCase):
@@ -94,39 +91,3 @@ class TestReactionFingerprint(unittest.TestCase):
         fp = self.rxn.fingerprint(radius=2, nbits=2048)
         # Difference FP = reactants - products, can be negative
         self.assertTrue(np.any(fp < 0) or np.any(fp > 0))
-
-
-class TestHashKey(unittest.TestCase):
-    """Test hash_key and hash_reactions."""
-
-    def setUp(self):
-        self.mol = TreeMolecule(parent=None, smiles="CCO")
-
-    def test_deterministic(self):
-        rxn1 = SmilesBasedRetroReaction(self.mol, reactants_str="CC.O")
-        rxn2 = SmilesBasedRetroReaction(self.mol, reactants_str="CC.O")
-        self.assertEqual(rxn1.hash_key(), rxn2.hash_key())
-
-    def test_different_reactions_differ(self):
-        rxn1 = SmilesBasedRetroReaction(self.mol, reactants_str="CC.O")
-        mol2 = TreeMolecule(parent=None, smiles="CCCO")
-        rxn2 = SmilesBasedRetroReaction(mol2, reactants_str="CCC.O")
-        self.assertNotEqual(rxn1.hash_key(), rxn2.hash_key())
-
-    def test_hash_reactions_deterministic(self):
-        rxn1 = SmilesBasedRetroReaction(self.mol, reactants_str="CC.O")
-        h1 = hash_reactions([rxn1])
-        h2 = hash_reactions([rxn1])
-        self.assertEqual(h1, h2)
-
-    def test_hash_reactions_sorted_vs_unsorted(self):
-        rxn1 = SmilesBasedRetroReaction(self.mol, reactants_str="CC.O")
-        mol2 = TreeMolecule(parent=None, smiles="CCCO")
-        rxn2 = SmilesBasedRetroReaction(mol2, reactants_str="CCC.O")
-        h_sorted = hash_reactions([rxn1, rxn2], sort=True)
-        h_sorted2 = hash_reactions([rxn2, rxn1], sort=True)
-        self.assertEqual(h_sorted, h_sorted2)
-
-
-if __name__ == "__main__":
-    unittest.main()

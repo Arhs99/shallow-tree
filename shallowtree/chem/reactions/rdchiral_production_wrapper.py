@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from rdchiral.bonds import get_atoms_across_double_bonds
-from rdchiral.initialization import BondDirOpposite
+from rdchiral import main as rdc
 from rdkit import Chem
+from rdkit.Chem.rdchem import BondDir, BondStereo, ChiralType
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from rdkit.Chem.rdchem import BondDir, BondStereo, ChiralType
-from rdchiral import main as rdc
 from shallowtree.utils.logging import logger
 
 try:

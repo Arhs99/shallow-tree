@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Optional, Tuple, List, Dict
 
+import numpy as np
+
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
 from shallowtree.chem.molecules.unique_molecule import UniqueMolecule
-from shallowtree.chem.reactions.reaction_interface_mixin import _ReactionInterfaceMixin
 from shallowtree.chem.reactions.smiles_based_retro_reaction import SmilesBasedRetroReaction
 
 
-class FixedRetroReaction(_ReactionInterfaceMixin):
+class FixedRetroReaction:
     """
     A retrosynthesis reaction that has the same interface as `RetroReaction`
     but it is fixed so it does not support SMARTS application or any creation of reactants.
@@ -36,7 +37,7 @@ class FixedRetroReaction(_ReactionInterfaceMixin):
         self.metadata = metadata or {}
         self.reactants: Tuple[Tuple[UniqueMolecule, ...], ...] = ()
 
-    def copy(self) -> "FixedRetroReaction":
+    def copy(self) -> FixedRetroReaction:
         """
         Shallow copy of this instance.
 
@@ -66,6 +67,29 @@ class FixedRetroReaction(_ReactionInterfaceMixin):
             mapped_prod_smiles=product,
             reactants_str=reactants,
         )
+
+    def fingerprint(self, radius: int, nbits: Optional[int] = None, chiral: bool = False) -> np.ndarray:
+        """
+        Returns a difference fingerprint
+
+        :param radius: the radius of the fingerprint
+        :param nbits: the length of the fingerprint. If not given it will use RDKit default, defaults to None
+        :param chiral: if True, include chirality information
+        :return: the fingerprint
+        """
+        product_fp = sum(mol.fingerprint(radius, nbits, chiral) for mol in self._products_getter()) # type: ignore
+        reactants_fp = sum(mol.fingerprint(radius, nbits, chiral) for mol in self._reactants_getter()) # type: ignore
+        return reactants_fp - product_fp  # type: ignore
+
+    def reaction_smiles(self) -> str:
+        """
+        Get the reaction SMILES, i.e. the SMILES of the reactants and products joined together
+
+        :return: the SMILES
+        """
+        reactants = ".".join(mol.smiles for mol in self._reactants_getter())  # type: ignore
+        products = ".".join(mol.smiles for mol in self._products_getter())  # type: ignore
+        return f"{reactants}>>{products}"
 
     def _products_getter(self) -> Tuple[UniqueMolecule, ...]:
         return self.reactants[0]
