@@ -6,7 +6,7 @@ import copy
 from collections import defaultdict
 from typing import Set, Dict, Any, List, Optional, Union
 
-from shallowtree.chem.mol import Molecule
+from shallowtree.chem.molecules.molecule import Molecule
 from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.stock.queries import (

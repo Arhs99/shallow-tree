@@ -8,7 +8,7 @@ from typing import Dict, Optional, Any
 
 import pandas as pd
 
-from shallowtree.chem.mol import Molecule
+from shallowtree.chem.molecules.molecule import Molecule
 from shallowtree.context.stock.packed_inchi_key_set import PackedInchiKeySet
 from shallowtree.utils.exceptions import StockException
 

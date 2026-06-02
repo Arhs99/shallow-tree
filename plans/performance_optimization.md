@@ -20,8 +20,8 @@ searchcli (CLI entry) → Expander.search_tree() loops over SMILES
 - `shallowtree/interfaces/full_tree_search.py` — `Expander` class, `search_tree()`, `req_search_tree()`, `context_search()`
 - `shallowtree/context/policy/filter_strategies.py` — `QuickKerasFilter.batch_feasibility()` (already implemented)
 - `shallowtree/context/policy/expansion_strategies.py` — `TemplateBasedExpansionStrategy.get_actions()`, `_update_cache()`
-- `shallowtree/chem/reaction.py` — `TemplatedRetroReaction._apply_with_rdchiral()` (line 320), `_apply_with_rdkit()` (line 366), `_RdChiralProductWrapper` (line 595)
-- `shallowtree/chem/mol.py` — `TreeMolecule`, `Molecule.inchi_key` (lazy, line 102), `fingerprint()` (cached, line 153)
+- `../shallowtree/chem/reactions/hash_reactions.py` — `TemplatedRetroReaction._apply_with_rdchiral()` (line 320), `_apply_with_rdkit()` (line 366), `_RdChiralProductWrapper` (line 595)
+- `../shallowtree/chem/molecules/molecule.py` — `TreeMolecule`, `Molecule.inchi_key` (lazy, line 102), `fingerprint()` (cached, line 153)
 - `shallowtree/utils/models.py` — `LocalKerasModel`, `LocalOnnxModel`, `ExternalModelViaGRPC`, `ExternalModelViaREST`
 - `shallowtree/context/stock/stock.py` — `Stock.__contains__()` (line 65)
 - `shallowtree/context/stock/queries.py` — `InMemoryInchiKeyQuery.__contains__()` (line 142)
@@ -118,7 +118,7 @@ def search_tree(self, smiles, max_depth=2):
 
 **Goal:** Avoid recompiling the same SMARTS template for every molecule it's applied to.
 
-**Modify `shallowtree/chem/reaction.py`:**
+**Modify `../shallowtree/chem/reactions/hash_reactions.py`:**
 
 Add module-level cached functions:
 ```python
@@ -155,7 +155,7 @@ In `_apply_with_rdkit()` (line 367):
 
 **Problem:** `_RdChiralProductWrapper.__init__()` costs 195s (16% of total). It is called once per template application (467,857 times), but the wrapper depends only on the molecule, not the template. When 80 templates are applied to the same molecule, the same wrapper is constructed 80 times.
 
-**Modify `shallowtree/chem/reaction.py`:**
+**Modify `../shallowtree/chem/reactions/hash_reactions.py`:**
 
 Add a module-level LRU cache keyed on the molecule's mapped SMILES (the wrapper input):
 ```python

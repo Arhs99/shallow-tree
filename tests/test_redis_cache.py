@@ -115,7 +115,7 @@ class TestSolvedOperations(unittest.TestCase):
     def test_solved_roundtrip(self):
         reactants = [MockTreeMolecule("CCO"), MockTreeMolecule("CC(=O)O")]
         with patch(
-            "shallowtree.context.cache.redis_cache.TreeMolecule",
+            "shallowtree.chem.molecules.tree_molecule.TreeMolecule",
             side_effect=lambda parent, smiles: MockTreeMolecule(smiles),
         ):
             self.cache.set_solved("TESTKEY", reactants, 0.95, "Ester hydrolysis")

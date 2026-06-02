@@ -14,13 +14,14 @@ from jinja2 import Template
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-from shallowtree.chem.mol import Molecule
+from shallowtree.chem.molecules.molecule import Molecule
+from shallowtree.chem.molecules.unique_molecule import UniqueMolecule
 from shallowtree.utils.paths import data_path
 
 if TYPE_CHECKING:
     import networkx as nx
 
-    from shallowtree.chem.reaction import FixedRetroReaction
+    from shallowtree.chem.reactions.fixed_retro_reaction import FixedRetroReaction
 
     from shallowtree.utils.type_utils import (
         Any,
@@ -82,7 +83,7 @@ def molecules_to_images(
     :return: the produced images
     """
     # Make sanitized copies of all molecules
-    mol_copies = [mol.make_unique() for mol in mols]
+    mol_copies = [UniqueMolecule(rd_mol=mol) for mol in mols]
     for mol in mol_copies:
         mol.sanitize()
 

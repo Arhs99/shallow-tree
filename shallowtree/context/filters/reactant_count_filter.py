@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-
-from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
+from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.context.filters.filter_strategy import FilterStrategy
 from shallowtree.utils.exceptions import RejectionException

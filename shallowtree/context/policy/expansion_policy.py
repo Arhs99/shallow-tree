@@ -7,8 +7,8 @@ from shallowtree.context.expansion_strategies.expansion_strategies import Expans
 from shallowtree.utils.exceptions import PolicyException
 
 if TYPE_CHECKING:
-    from shallowtree.chem.mol import TreeMolecule
-    from shallowtree.chem.reaction import RetroReaction
+    from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+    from shallowtree.chem.reactions.retro_reaction import RetroReaction
 
 
 class ExpansionPolicy(ContextCollection):
