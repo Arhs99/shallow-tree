@@ -1,5 +1,6 @@
 from typing import Optional, Callable, Dict, List, Tuple, Sequence
 
+from dulwich.cli import cmd_stash_list
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Mol
@@ -97,9 +98,7 @@ class TreeMolecule(Molecule):
         ]
         return self._atom_bonds
 
-    def get_bonds_in_molecule(
-            self, query_bonds: Sequence[Sequence[int]]
-    ) -> Sequence[Sequence[int]]:
+    def get_bonds_in_molecule(self, query_bonds: Sequence[Sequence[int]]) -> Sequence[Sequence[int]]:
         """
         Get bonds (from a list of bonds) that are present in the molecule.
         :param bonds: List of bond (atom pairs)

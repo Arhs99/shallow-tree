@@ -37,16 +37,6 @@ class FixedRetroReaction:
         self.metadata = metadata or {}
         self.reactants: Tuple[Tuple[UniqueMolecule, ...], ...] = ()
 
-    def copy(self) -> FixedRetroReaction:
-        """
-        Shallow copy of this instance.
-
-        :return: the copy
-        """
-        new_reaction = FixedRetroReaction(self.mol, self.smiles, self.metadata)
-        new_reaction.reactants = tuple(mol_list for mol_list in self.reactants)
-        return new_reaction
-
     def to_smiles_based_retroreaction(self) -> SmilesBasedRetroReaction:
         """
         Convert a FixedRetroReaction to a SmilesBasedRetroReaction.

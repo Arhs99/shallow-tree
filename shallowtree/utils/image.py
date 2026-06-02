@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     import networkx as nx
 
     from shallowtree.chem.reactions.fixed_retro_reaction import FixedRetroReaction
+    from PIL.Image import Image
 
     from shallowtree.utils.type_utils import (
         Any,
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
         FrameColors,
         List,
         PilColor,
-        PilImage,
         Sequence,
         StrDict,
         Tuple,
@@ -51,7 +51,7 @@ def _clean_up_images() -> None:
 
 def molecule_to_image(
     mol: Molecule, frame_color: PilColor, size: int = 300
-) -> PilImage:
+) -> Image:
     """
     Create a pretty image of a molecule,
     with a colored frame around it
@@ -71,7 +71,7 @@ def molecules_to_images(
     mols: Sequence[Molecule],
     frame_colors: Sequence[PilColor],
     size: int = 300,
-) -> List[PilImage]:
+) -> List[Image]:
     """
     Create pretty images of molecules with a colored frame around each one of them.
 
@@ -104,7 +104,7 @@ def molecules_to_images(
     return images
 
 
-def crop_image(img: PilImage, margin: int = 20) -> PilImage:
+def crop_image(img: Image, margin: int = 20) -> Image:
     """
     Crop an image by removing white space around it
 
@@ -146,8 +146,8 @@ def crop_image(img: PilImage, margin: int = 20) -> PilImage:
 
 
 def draw_rounded_rectangle(
-    img: PilImage, color: PilColor, arc_size: int = 20
-) -> PilImage:
+    img: Image, color: PilColor, arc_size: int = 20
+) -> Image:
     """
     Draw a rounded rectangle around an image
 

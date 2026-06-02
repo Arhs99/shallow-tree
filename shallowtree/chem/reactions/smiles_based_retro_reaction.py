@@ -40,12 +40,6 @@ class SmilesBasedRetroReaction(RetroReaction):
             f"retro reaction on molecule {self.mol.smiles} giving {self.reactants_str}"
         )
 
-    def to_dict(self) -> StrDict:
-        dict_ = super().to_dict()
-        dict_["reactants_str"] = self.reactants_str
-        dict_["mapped_prod_smiles"] = self._mapped_prod_smiles
-        return dict_
-
     def _apply(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
         outcomes = []
         smiles_list = self.reactants_str.split(".")
