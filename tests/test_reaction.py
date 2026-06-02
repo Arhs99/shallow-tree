@@ -65,14 +65,6 @@ class TestTemplatedRetroReaction(unittest.TestCase):
         with self.assertRaises(KeyError):
             TemplatedRetroReaction(self.mol)
 
-    def test_copy_preserves_reactants(self):
-        rxn = TemplatedRetroReaction(
-            self.mol, smarts=self.smarts, use_rdchiral=False
-        )
-        _ = rxn.reactants  # force apply
-        rxn_copy = rxn.copy()
-        self.assertEqual(len(rxn_copy.reactants), len(rxn.reactants))
-
 
 class TestReactionFingerprint(unittest.TestCase):
     """Test difference fingerprint."""

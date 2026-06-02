@@ -6,7 +6,6 @@ from typing import List, Optional, Any, Tuple, Set, Dict
 import numpy as np
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from shallowtree.utils.type_utils import StrDict
 
 
 class RetroReaction(abc.ABC):
@@ -43,25 +42,10 @@ class RetroReaction(abc.ABC):
             )
         self.mol = mol
         self.index = index
-        self.metadata: StrDict = metadata or {}
+        self.metadata: Dict = metadata or {}
         self._reactants: Optional[Tuple[Tuple[TreeMolecule, ...], ...]] = None
         self._smiles: Optional[str] = None
-        self._kwargs: StrDict = kwargs
-
-    @classmethod
-    def from_serialization(cls, init_args: Dict, reactants: List[List[TreeMolecule]]) -> RetroReaction:
-        """
-        Create an object from a serialization. It does
-        1) instantiate an object using the `init_args` and
-        2) set the reactants to a tuple-form of `reactants
-
-        :param init_args: the arguments passed to the `__init__` method
-        :param reactants: the reactants
-        :return: the deserialized object
-        """
-        obj = cls(**init_args)
-        obj._reactants = tuple(tuple(mol for mol in lst_) for lst_ in reactants)
-        return obj
+        self._kwargs: Dict = kwargs
 
     def __str__(self) -> str:
         return f"reaction on molecule {self.mol.smiles}"
@@ -99,20 +83,6 @@ class RetroReaction(abc.ABC):
         """
         return self._reactants is None
 
-    def copy(self, index: Optional[int] = None) -> RetroReaction:
-        """
-        Shallow copy of this instance.
-
-        :param index: new index, defaults to None
-        :return: the copy
-        """
-        # pylint: disable=protected-access
-        index = index if index is not None else self.index
-        new_reaction = self.__class__(self.mol, index, dict(self.metadata), **self._kwargs)
-        new_reaction._reactants = tuple(mol_list for mol_list in self._reactants or [])
-        new_reaction._smiles = self._smiles
-        return new_reaction
-
     def mapped_reaction_smiles(self) -> str:
         """
         Get the mapped reaction SMILES if it exists
@@ -121,18 +91,6 @@ class RetroReaction(abc.ABC):
         reactants = self.mol.mapped_smiles
         products = ".".join(mol.mapped_smiles for mol in self._products_getter())
         return reactants + ">>" + products
-
-    def to_dict(self) -> Dict:
-        """
-        Return the retro reaction as dictionary
-        This dictionary is not suitable for serialization, but is used by other serialization routines
-        The elements of the dictionary can be used to instantiate a new reaction object
-        """
-        return {
-            "mol": self.mol,
-            "index": self.index,
-            "metadata": dict(self.metadata),
-        }
 
     @abc.abstractmethod
     def _apply(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:

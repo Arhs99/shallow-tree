@@ -3,26 +3,18 @@ from __future__ import annotations
 from functools import partial, lru_cache
 from typing import Optional, Any, Tuple, Set
 
-from rdchiral import main as rdc
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
-from shallowtree.chem.reactions.rdchiral_production_wrapper import _RdChiralProductWrapper, _rdchiral_product_cache
 from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.utils.exceptions import MoleculeException
-from shallowtree.utils.logging import logger
 from shallowtree.utils.lru import LRUCache
 from shallowtree.utils.type_utils import StrDict
 
 
 @lru_cache(maxsize=2048)
-def _cached_rdchiral_reaction(smarts: str):
-    return rdc.rdchiralReaction(smarts)
-
-
-@lru_cache(maxsize=2048)
-def _cached_rdkit_reaction(smarts: str):
+def _cached_rdkit_reaction(smarts: str): #TODO: do we keep this?
     return AllChem.ReactionFromSmarts(smarts)
 
 
@@ -48,7 +40,6 @@ class TemplatedRetroReaction(RetroReaction):
     ):
         super().__init__(mol, index, metadata, **kwargs)
         self.smarts: str = kwargs["smarts"]
-        self._use_rdchiral: bool = kwargs.get("use_rdchiral", False)
         self._rd_reaction: Optional[Chem.rdChemReactions.ChemicalReaction] = None
 
     def __str__(self) -> str:
@@ -63,69 +54,8 @@ class TemplatedRetroReaction(RetroReaction):
             self._rd_reaction = AllChem.ReactionFromSmarts(self.smarts)
         return self._rd_reaction
 
-    def to_dict(self) -> StrDict:
-        dict_ = super().to_dict()
-        dict_["smarts"] = self.smarts
-        return dict_
-
-    def _cached_rdchiral_product_wrapper(self, mol):
-        key = mol.mapped_smiles
-        if key in _rdchiral_product_cache:
-            return _rdchiral_product_cache[key]
-        wrapper = _RdChiralProductWrapper(mol)
-        _rdchiral_product_cache[key] = wrapper
-        return wrapper
-
     def _apply(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
-        if self._use_rdchiral:
-            return self._apply_with_rdchiral()
         return self._apply_with_rdkit()
-
-    def _apply_with_rdchiral(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
-        """
-        Apply a reactions smarts to a molecule and return the products (reactants for retro templates)
-        Will try to sanitize the reactants, and if that fails it will not return that molecule
-        """
-        reaction = _cached_rdchiral_reaction(self.smarts)
-        rct = self._cached_rdchiral_product_wrapper(self.mol)
-        try:
-            reactants = rdc.rdchiralRun(reaction, rct, keep_mapnums=True)
-        except RuntimeError as err:
-            logger().debug(
-                f"Runtime error in RDChiral with template {self.smarts} on {self.mol.smiles}\n{err}"
-            )
-            reactants = []
-        except KeyError as err:
-            logger().debug(
-                f"Index error in RDChiral with template {self.smarts} on {self.mol.mapped_smiles}\n{err}"
-            )
-            reactants = []
-
-        # Turning rdchiral outcome into rdkit tuple of tuples to maintain compatibility
-        outcomes = []
-        for reactant_str in reactants:
-            smiles_list = reactant_str.split(".")
-            exclude_nums = set(self.mol.mapping_to_index.keys())
-            update_func = partial(
-                self._update_unmapped_atom_num, exclude_nums=exclude_nums
-            )
-            try:
-                rct_objs = tuple(
-                    TreeMolecule(
-                        parent=self.mol,
-                        smiles=smi,
-                        sanitize=True,
-                        mapping_update_callback=update_func,
-                    )
-                    for smi in smiles_list
-                )
-            except MoleculeException:
-                pass
-            else:
-                outcomes.append(rct_objs)
-        self._reactants = tuple(outcomes)
-
-        return self._reactants
 
     def _apply_with_rdkit(self) -> Tuple[Tuple[TreeMolecule, ...], ...]:
         rxn = _cached_rdkit_reaction(self.smarts)
