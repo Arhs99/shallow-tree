@@ -44,6 +44,7 @@ class TreeMolecule(Molecule):
     ) -> None:
         super().__init__(parent=parent, transform=transform, rd_mol=rd_mol, smiles=smiles, sanitize=sanitize,
                          mapping_update_callback=mapping_update_callback, intern_cache=intern_cache)
+
     @classmethod
     def create_from_sanitized(cls,
             parent: Optional["TreeMolecule"],
@@ -56,7 +57,6 @@ class TreeMolecule(Molecule):
                          mapping_update_callback=mapping_update_callback, intern_cache=intern_cache)
         molecule._is_sanitized = True
         return molecule
-
 
     @property
     def mapping_to_index(self) -> Dict[int, int]:
@@ -93,7 +93,7 @@ class TreeMolecule(Molecule):
         bonds_in_mol = [bond for bond in query_bonds if bond in molecule_bonds]
         return bonds_in_mol
 
-    def has_all_focussed_bonds(self, bonds: Sequence[Sequence[int]]) -> bool:
+    def has_all_focussed_bonds(self, bonds: Sequence[Sequence[int]]) -> bool: #TODO: Figure the utility of this method
         """Checks that the focussed bonds exist in the target molecule's atom bonds.
 
         :param bonds: Focussed bonds.
