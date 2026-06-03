@@ -105,13 +105,12 @@ class TemplatedRetroReaction(RetroReaction):
             if cached:
                 return cached
             else:
-                new_mol = TreeMolecule(
+                new_mol = TreeMolecule.create_from_sanitized(
                     parent=self.mol,
                     rd_mol=rdmol,
                     sanitize=False,
                     mapping_update_callback=update_func,
                 )
-                new_mol._is_sanitized = True #TODO: find a better solution
                 intern_cache[ik] = new_mol
                 return new_mol
 

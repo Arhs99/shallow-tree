@@ -44,6 +44,18 @@ class TreeMolecule(Molecule):
     ) -> None:
         super().__init__(parent=parent, transform=transform, rd_mol=rd_mol, smiles=smiles, sanitize=sanitize,
                          mapping_update_callback=mapping_update_callback, intern_cache=intern_cache)
+    @classmethod
+    def create_from_sanitized(cls,
+            parent: Optional["TreeMolecule"],
+            transform: Optional[int] = None,
+            rd_mol: Optional[Mol] = None,
+            smiles: Optional[str] = None,
+            sanitize: bool = False,
+            mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
+            intern_cache: Optional[Dict[str, "TreeMolecule"]] = None):
+        molecule = cls(parent=parent, transform=transform, rd_mol=rd_mol, smiles=smiles, sanitize=False,
+                         mapping_update_callback=mapping_update_callback, intern_cache=intern_cache)
+        return molecule
 
 
     @property
