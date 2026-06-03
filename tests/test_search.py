@@ -248,6 +248,57 @@ class TestBestRoute(unittest.TestCase):
             exp.best_route(mol, 0, tree)
         self.assertIn("CCO", exp.BBs)
 
+    def _make_boundary_solved(self, exp):
+        """Build a solved chain root->mid->leaf->deep with the leaf reached at
+        depth max_depth+1. Returns (root, leaf_smiles, deep_smiles)."""
+        root = TreeMolecule(parent=None, smiles="c1ccccc1CO")
+        mid = TreeMolecule(parent=root, smiles="c1ccccc1C(=O)O")
+        leaf = TreeMolecule(parent=mid, smiles="CCO")
+        deep = TreeMolecule(parent=leaf, smiles="CCN")
+        exp.solved = {
+            root.inchi_key: ((mid,), 1.0, "r1"),
+            mid.inchi_key: ((leaf,), 1.0, "r2"),
+            leaf.inchi_key: ((deep,), 1.0, "r3"),  # would expand if not depth-capped
+        }
+        return root, leaf.smiles, deep.smiles
+
+    def test_best_route_records_depth_boundary_leaf(self):
+        """A solved node reached past max_depth must be treated as a leaf:
+        recorded in BBs, warned (non-stock), and never expanded further."""
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=False)
+        exp = _make_expander(stock=stock)
+        exp.max_depth = 1
+        root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
+
+        tree = defaultdict(list)
+        exp.BBs = []
+        with self.assertLogs(exp._logger, level="WARNING") as cm:
+            exp.best_route(root, 0, tree)
+
+        self.assertTrue(any("route truncated" in m for m in cm.output))
+        self.assertIn(leaf_smiles, exp.BBs)       # boundary leaf recorded
+        self.assertNotIn(deep_smiles, exp.BBs)    # not expanded past the limit
+        self.assertNotIn(3, tree)                 # no depth-3 reaction emitted
+        self.assertIn(2, tree)                    # mid => leaf still emitted
+
+    def test_best_route_depth_boundary_leaf_silent_when_in_stock(self):
+        """An in-stock boundary leaf is recorded but does not warn."""
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_expander(stock=stock)
+        exp.max_depth = 1
+        root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
+
+        tree = defaultdict(list)
+        exp.BBs = []
+        with self.assertNoLogs(exp._logger, level="WARNING"):
+            exp.best_route(root, 0, tree)
+
+        self.assertIn(leaf_smiles, exp.BBs)
+        self.assertNotIn(deep_smiles, exp.BBs)
+        self.assertNotIn(3, tree)
+
     def test_best_route_silent_for_context_scaffold_mol(self):
         """In context_search, scaffold-matching reactants are intentional
         terminal nodes (never added to solved); best_route must not warn."""
