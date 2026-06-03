@@ -1,0 +1,777 @@
+{
+  "description": "Route fixtures from benchmark128 cache_main/output.csv, stock=ZINC. leaf_in_stock is ground truth for green/orange coloring (baked in so tests need no stock file). See tests/test_image.py.",
+  "search": {
+    "max_depth": 2,
+    "stock": "zinc_stock.hdf5",
+    "stock_size": 17422831
+  },
+  "fixtures": [
+    {
+      "idx": 6,
+      "smiles": "O=C(C=Cc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)s1)NO",
+      "score": 1.0,
+      "status": "solved",
+      "maxdepth": 3,
+      "route": {
+        "1": [
+          [
+            "O=C(C=Cc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)s1)NO => O=C(C=Cc1ccc(-c2ccc3ncnc(Cl)c3c2)s1)NO.Nc1ccc(OCc2cccc(F)c2)c(Cl)c1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "2": [
+          [
+            "O=C(C=Cc1ccc(-c2ccc3ncnc(Cl)c3c2)s1)NO => Clc1ncnc2ccc(Br)cc12.O=C(C=Cc1ccc(B(O)O)s1)NO",
+            "0.0 Unrecognized"
+          ],
+          [
+            "Nc1ccc(OCc2cccc(F)c2)c(Cl)c1 => Fc1cccc(CBr)c1.Nc1ccc(O)c(Cl)c1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "3": [
+          [
+            "O=C(C=Cc1ccc(B(O)O)s1)NO => O=Cc1ccc(B(O)O)s1.CC(=O)NO",
+            "0.0 Unrecognized"
+          ]
+        ]
+      },
+      "leaf_in_stock": {
+        "CC(=O)NO": true,
+        "Clc1ncnc2ccc(Br)cc12": true,
+        "Fc1cccc(CBr)c1": true,
+        "Nc1ccc(O)c(Cl)c1": true,
+        "O=Cc1ccc(B(O)O)s1": true
+      },
+      "nested": {
+        "type": "mol",
+        "hide": false,
+        "smiles": "O=C(C=Cc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)s1)NO",
+        "is_chemical": true,
+        "in_stock": false,
+        "children": [
+          {
+            "type": "reaction",
+            "hide": false,
+            "smiles": "",
+            "is_reaction": true,
+            "metadata": {
+              "classification": "0.0 Unrecognized"
+            },
+            "children": [
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "O=C(C=Cc1ccc(-c2ccc3ncnc(Cl)c3c2)s1)NO",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Clc1ncnc2ccc(Br)cc12",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "O=C(C=Cc1ccc(B(O)O)s1)NO",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "O=Cc1ccc(B(O)O)s1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              },
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CC(=O)NO",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "Nc1ccc(OCc2cccc(F)c2)c(Cl)c1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Fc1cccc(CBr)c1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Nc1ccc(O)c(Cl)c1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "idx": 18,
+      "smiles": "Cc1ccc(Nc2ccnc(Nc3ccc(OCC(O)CN(C)C)cc3)n2)cc1",
+      "score": 1.0,
+      "status": "solved",
+      "maxdepth": 3,
+      "route": {
+        "1": [
+          [
+            "Cc1ccc(Nc2ccnc(Nc3ccc(OCC(O)CN(C)C)cc3)n2)cc1 => CN(C)CC(O)CCl.Cc1ccc(Nc2ccnc(Nc3ccc(O)cc3)n2)cc1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "2": [
+          [
+            "CN(C)CC(O)CCl => OC(CCl)CCl.CNC",
+            "0.0 Unrecognized"
+          ],
+          [
+            "Cc1ccc(Nc2ccnc(Nc3ccc(O)cc3)n2)cc1 => Cc1ccc(Nc2ccnc(Cl)n2)cc1.Nc1ccc(O)cc1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "3": [
+          [
+            "CNC => CN(C)Cc1ccccc1",
+            "0.0 Unrecognized"
+          ]
+        ]
+      },
+      "leaf_in_stock": {
+        "CN(C)Cc1ccccc1": true,
+        "Cc1ccc(Nc2ccnc(Cl)n2)cc1": true,
+        "Nc1ccc(O)cc1": true,
+        "OC(CCl)CCl": true
+      },
+      "nested": {
+        "type": "mol",
+        "hide": false,
+        "smiles": "Cc1ccc(Nc2ccnc(Nc3ccc(OCC(O)CN(C)C)cc3)n2)cc1",
+        "is_chemical": true,
+        "in_stock": false,
+        "children": [
+          {
+            "type": "reaction",
+            "hide": false,
+            "smiles": "",
+            "is_reaction": true,
+            "metadata": {
+              "classification": "0.0 Unrecognized"
+            },
+            "children": [
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "CN(C)CC(O)CCl",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "OC(CCl)CCl",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "CNC",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CN(C)Cc1ccccc1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "Cc1ccc(Nc2ccnc(Nc3ccc(O)cc3)n2)cc1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Cc1ccc(Nc2ccnc(Cl)n2)cc1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Nc1ccc(O)cc1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "idx": 27,
+      "smiles": "CN(C)CC(O)COc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1",
+      "score": 1.0,
+      "status": "solved",
+      "maxdepth": 3,
+      "route": {
+        "1": [
+          [
+            "CN(C)CC(O)COc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1 => CN(C)CC(O)CCl.Oc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "2": [
+          [
+            "CN(C)CC(O)CCl => OC(CCl)CCl.CNC",
+            "0.0 Unrecognized"
+          ],
+          [
+            "Oc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1 => Clc1ccc(Cl)c(Nc2cc(Cl)ncn2)c1.Nc1ccc(O)cc1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "3": [
+          [
+            "CNC => CN(C)Cc1ccccc1",
+            "0.0 Unrecognized"
+          ],
+          [
+            "Clc1ccc(Cl)c(Nc2cc(Cl)ncn2)c1 => Clc1cc(Cl)ncn1.Nc1cc(Cl)ccc1Cl",
+            "0.0 Unrecognized"
+          ]
+        ]
+      },
+      "leaf_in_stock": {
+        "CN(C)Cc1ccccc1": true,
+        "Clc1cc(Cl)ncn1": true,
+        "Nc1cc(Cl)ccc1Cl": true,
+        "Nc1ccc(O)cc1": true,
+        "OC(CCl)CCl": true
+      },
+      "nested": {
+        "type": "mol",
+        "hide": false,
+        "smiles": "CN(C)CC(O)COc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1",
+        "is_chemical": true,
+        "in_stock": false,
+        "children": [
+          {
+            "type": "reaction",
+            "hide": false,
+            "smiles": "",
+            "is_reaction": true,
+            "metadata": {
+              "classification": "0.0 Unrecognized"
+            },
+            "children": [
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "CN(C)CC(O)CCl",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "OC(CCl)CCl",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "CNC",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CN(C)Cc1ccccc1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "Oc1ccc(Nc2cc(Nc3cc(Cl)ccc3Cl)ncn2)cc1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Clc1ccc(Cl)c(Nc2cc(Cl)ncn2)c1",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "Clc1cc(Cl)ncn1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              },
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "Nc1cc(Cl)ccc1Cl",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Nc1ccc(O)cc1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "idx": 34,
+      "smiles": "CN1CCN(c2ccc3c(c2)C(=CNc2ccc(CN4CCCCC4)cc2)C(=O)NC3=O)CC1",
+      "score": 1.0,
+      "status": "solved",
+      "maxdepth": 3,
+      "route": {
+        "1": [
+          [
+            "CN1CCN(c2ccc3c(c2)C(=CNc2ccc(CN4CCCCC4)cc2)C(=O)NC3=O)CC1 => O=C1NC(=O)c2ccc(N3CCNCC3)cc2C1=CNc1ccc(CN2CCCCC2)cc1.CN1CCNCC1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "2": [
+          [
+            "O=C1NC(=O)c2ccc(N3CCNCC3)cc2C1=CNc1ccc(CN2CCCCC2)cc1 => COc1ccc2c(c1)C(=CNc1ccc(CN3CCCCC3)cc1)C(=O)NC2=O.C1CNCCN1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "3": [
+          [
+            "COc1ccc2c(c1)C(=CNc1ccc(CN3CCCCC3)cc1)C(=O)NC2=O => CO/C=C1/C(=O)NC(=O)c2ccc(OC)cc21.Nc1ccc(CN2CCCCC2)cc1",
+            "0.0 Unrecognized"
+          ]
+        ]
+      },
+      "leaf_in_stock": {
+        "C1CNCCN1": true,
+        "CN1CCNCC1": true,
+        "CO/C=C1/C(=O)NC(=O)c2ccc(OC)cc21": false,
+        "Nc1ccc(CN2CCCCC2)cc1": true
+      },
+      "nested": {
+        "type": "mol",
+        "hide": false,
+        "smiles": "CN1CCN(c2ccc3c(c2)C(=CNc2ccc(CN4CCCCC4)cc2)C(=O)NC3=O)CC1",
+        "is_chemical": true,
+        "in_stock": false,
+        "children": [
+          {
+            "type": "reaction",
+            "hide": false,
+            "smiles": "",
+            "is_reaction": true,
+            "metadata": {
+              "classification": "0.0 Unrecognized"
+            },
+            "children": [
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "O=C1NC(=O)c2ccc(N3CCNCC3)cc2C1=CNc1ccc(CN2CCCCC2)cc1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "COc1ccc2c(c1)C(=CNc1ccc(CN3CCCCC3)cc1)C(=O)NC2=O",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CO/C=C1/C(=O)NC(=O)c2ccc(OC)cc21",
+                                "is_chemical": true,
+                                "in_stock": false
+                              },
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "Nc1ccc(CN2CCCCC2)cc1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "C1CNCCN1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "CN1CCNCC1",
+                "is_chemical": true,
+                "in_stock": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "idx": 71,
+      "smiles": "CC(=O)N1CCC(n2ncc(Nc3ncc(Cl)c(-c4cnn5ccccc45)n3)c2C)CC1",
+      "score": 1.0,
+      "status": "solved",
+      "maxdepth": 3,
+      "route": {
+        "1": [
+          [
+            "CC(=O)N1CCC(n2ncc(Nc3ncc(Cl)c(-c4cnn5ccccc45)n3)c2C)CC1 => Clc1ncc(Cl)c(-c2cnn3ccccc23)n1.CC(=O)N1CCC(n2ncc(N)c2C)CC1",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "2": [
+          [
+            "Clc1ncc(Cl)c(-c2cnn3ccccc23)n1 => Clc1ncc(Cl)c(Cl)n1.OB(O)c1cnn2ccccc12",
+            "0.0 Unrecognized"
+          ],
+          [
+            "CC(=O)N1CCC(n2ncc(N)c2C)CC1 => CC(=O)N1CCC(OS(C)(=O)=O)CC1.Cc1[nH]ncc1N",
+            "0.0 Unrecognized"
+          ]
+        ],
+        "3": [
+          [
+            "CC(=O)N1CCC(OS(C)(=O)=O)CC1 => CS(=O)(=O)OS(C)(=O)=O.CC(=O)N1CCC(O)CC1",
+            "0.0 Unrecognized"
+          ]
+        ]
+      },
+      "leaf_in_stock": {
+        "CC(=O)N1CCC(O)CC1": true,
+        "CS(=O)(=O)OS(C)(=O)=O": true,
+        "Cc1[nH]ncc1N": true,
+        "Clc1ncc(Cl)c(Cl)n1": true,
+        "OB(O)c1cnn2ccccc12": true
+      },
+      "nested": {
+        "type": "mol",
+        "hide": false,
+        "smiles": "CC(=O)N1CCC(n2ncc(Nc3ncc(Cl)c(-c4cnn5ccccc45)n3)c2C)CC1",
+        "is_chemical": true,
+        "in_stock": false,
+        "children": [
+          {
+            "type": "reaction",
+            "hide": false,
+            "smiles": "",
+            "is_reaction": true,
+            "metadata": {
+              "classification": "0.0 Unrecognized"
+            },
+            "children": [
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "Clc1ncc(Cl)c(-c2cnn3ccccc23)n1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Clc1ncc(Cl)c(Cl)n1",
+                        "is_chemical": true,
+                        "in_stock": true
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "OB(O)c1cnn2ccccc12",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "mol",
+                "hide": false,
+                "smiles": "CC(=O)N1CCC(n2ncc(N)c2C)CC1",
+                "is_chemical": true,
+                "in_stock": false,
+                "children": [
+                  {
+                    "type": "reaction",
+                    "hide": false,
+                    "smiles": "",
+                    "is_reaction": true,
+                    "metadata": {
+                      "classification": "0.0 Unrecognized"
+                    },
+                    "children": [
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "CC(=O)N1CCC(OS(C)(=O)=O)CC1",
+                        "is_chemical": true,
+                        "in_stock": false,
+                        "children": [
+                          {
+                            "type": "reaction",
+                            "hide": false,
+                            "smiles": "",
+                            "is_reaction": true,
+                            "metadata": {
+                              "classification": "0.0 Unrecognized"
+                            },
+                            "children": [
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CS(=O)(=O)OS(C)(=O)=O",
+                                "is_chemical": true,
+                                "in_stock": true
+                              },
+                              {
+                                "type": "mol",
+                                "hide": false,
+                                "smiles": "CC(=O)N1CCC(O)CC1",
+                                "is_chemical": true,
+                                "in_stock": true
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "mol",
+                        "hide": false,
+                        "smiles": "Cc1[nH]ncc1N",
+                        "is_chemical": true,
+                        "in_stock": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "idx": 1,
+      "smiles": "CC(C)c1cnn2c(NCc3ccccc3N(C)C)nc(OC3CCN(C)CC3)nc12",
+      "score": 0.75,
+      "status": "not solved",
+      "maxdepth": 0,
+      "route": {},
+      "leaf_in_stock": {}
+    },
+    {
+      "idx": 3,
+      "smiles": "COc1ccc(-c2nc(Nc3cccc(C(=O)NC4CCNC4)c3)nc3[nH]cnc23)cc1OC",
+      "score": 0.0,
+      "status": "not solved",
+      "maxdepth": 0,
+      "route": {},
+      "leaf_in_stock": {}
+    }
+  ]
+}
