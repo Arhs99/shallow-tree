@@ -8,6 +8,9 @@ work, mirroring the original to_dict -> RouteImageFactory.to_image contract.
 
 Run:
     conda run -n shallow-tree python scripts/check_image.py
+    # render the saved benchmark routes to PNGs (no models/stock needed):
+    conda run -n shallow-tree python scripts/check_image.py \
+        --fixtures tests/fixtures/route_fixtures.json
     # optional end-to-end check against a real search (loads models):
     conda run -n shallow-tree python scripts/check_image.py \
         --config application_config/config.json --smiles CCOC(=O)c1ccccc1
@@ -15,6 +18,7 @@ Run:
 Exits non-zero if any check fails. Saves PNGs to a temp dir it prints.
 """
 import argparse
+import json
 import sys
 import tempfile
 import os
@@ -135,8 +139,35 @@ def check_real_search(config_path, smiles):
     print(f"  [OK] real search route rendered for {smiles}")
 
 
+def check_fixtures(fixtures_path):
+    """Render every solved route in a route_fixtures.json to a PNG for review.
+
+    Uses the baked-in leaf_in_stock truth for green/orange coloring, so it
+    needs no models and no stock file."""
+    with open(fixtures_path) as fileobj:
+        data = json.load(fileobj)
+    solved = [f for f in data["fixtures"] if f.get("status") == "solved"]
+    rendered = 0
+    for fx in solved:
+        route = {int(k): v for k, v in fx["route"].items()}
+        in_stock = {smi for smi, ok in fx["leaf_in_stock"].items() if ok}
+        nested = flat_route_to_dict(route, in_stock=in_stock)
+        img = RouteImageFactory(nested).image
+        assert img.size[0] > 0 and img.size[1] > 0
+        name = f"fixture_idx{fx.get('idx', rendered):03d}.png"
+        _save(img, name)
+        n = len(fx["leaf_in_stock"])
+        green = sum(fx["leaf_in_stock"].values())
+        print(f"  [OK] idx={fx.get('idx')} leaves={n} in_stock={green} -> {name}")
+        rendered += 1
+    if not rendered:
+        print(f"  [SKIP] no solved routes with a 'nested' route in {fixtures_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Smoke test image generation")
+    parser.add_argument("--fixtures", help="path to a route_fixtures.json; render its "
+                        "solved routes to PNGs (no models/stock needed)")
     parser.add_argument("--config", help="path to config json for the opt-in real-search check")
     parser.add_argument("--smiles", default="CCOC(=O)c1ccccc1",
                         help="target SMILES for the real-search check")
@@ -148,6 +179,8 @@ def main():
         ("route fixture render", check_route_render_fixture),
         ("flat-route adapter", check_adapter),
     ]
+    if args.fixtures:
+        checks.append(("fixture routes", lambda: check_fixtures(args.fixtures)))
     if args.config:
         checks.append(("real search render", lambda: check_real_search(args.config, args.smiles)))
 
