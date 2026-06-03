@@ -192,22 +192,24 @@ class Expander:
 
     def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, context_scaffold: Mol = None,
                    context_scaffold_stripped: Mol = None):
-        while depth <= self.max_depth:
-            tup = self.solved.get(mol.inchi_key)
-            if tup is None:
-                if mol not in self.stock and not self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped):
-                    self._logger.warning(
-                        f"best_route: {mol.smiles} missing from solved but not in stock — "
-                        "route truncated (cache/solved invariant violated)")
-                self.BBs.append(mol.smiles)
-                return
-            else:
-                rxn, score, clas = tup
-                reactants = '.'.join([m.smiles for m in rxn])
-                tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
-                for x in rxn:
-                    self.best_route(x, depth + 1, tree, context_scaffold, context_scaffold_stripped)
-                return
+        # Past the depth limit a node is a route leaf — never expand it further,
+        # even if it is in self.solved (that knowledge came from a shallower
+        # search of the same molecule as its own target). Forcing tup=None here
+        # routes such boundary nodes into the leaf branch so they get stock-
+        # checked, warned, and recorded in BBs instead of being silently dropped.
+        tup = None if depth > self.max_depth else self.solved.get(mol.inchi_key)
+        if tup is None:
+            if mol not in self.stock and not self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped):
+                self._logger.warning(
+                    f"best_route: {mol.smiles} is a route leaf but not in stock — "
+                    "route truncated (depth boundary or cache/solved invariant)")
+            self.BBs.append(mol.smiles)
+            return
+        rxn, score, clas = tup
+        reactants = '.'.join([m.smiles for m in rxn])
+        tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
+        for x in rxn:
+            self.best_route(x, depth + 1, tree, context_scaffold, context_scaffold_stripped)
 
     def _determine_rules_and_actions(self, mol: TreeMolecule):
         expansion_policy, _ = self.expansion_policy.get_actions([mol])
