@@ -91,7 +91,7 @@ class TemplatedRetroReaction(RetroReaction):
         previously-seen instance and skips the rest of TreeMolecule init
         (deep copy of mapped_mol, mapped_smiles compute, remove_atom_mapping).
         """
-        if intern_cache:
+        if intern_cache is not None:
             try:
                 Chem.SanitizeMol(rdmol)
             except Exception as err:  # noqa: BLE001 — RDKit raises many things
