@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Dict, Union, Tuple, Sequence
+from typing import Optional, Dict, Union, Tuple, Sequence, Callable
 
 import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem, Descriptors
+from rdkit.Chem import Mol
 
 from shallowtree.utils.exceptions import MoleculeException
-
-if TYPE_CHECKING:
-    from rdkit.Chem import Mol
 
 
 class Molecule:
@@ -29,12 +27,10 @@ class Molecule:
     :raises MoleculeException: if neither rd_mol or smiles is given, or if the molecule could not be sanitized
     """
 
-    def __init__(
-            self,
-            rd_mol: Optional[Mol] = None,
-            smiles: Optional[str] = None,
-            sanitize: bool = False,
-    ) -> None:
+    def __init__(self,  parent: Optional, transform: Optional[int] = None, rd_mol: Optional[Mol] = None,
+                 smiles: Optional[str] = None,sanitize: bool = False,
+                 mapping_update_callback: Optional[Callable] = None,
+                 intern_cache: Optional[Dict] = None,) :
         if not rd_mol and not smiles:
             raise MoleculeException(
                 "Need to provide either a rdkit Mol object or smiles to create a molecule"
@@ -48,7 +44,6 @@ class Molecule:
             self.rd_mol = Chem.MolFromSmiles(smiles, sanitize=False)
 
         self._inchi_key: Optional[str] = None
-        self._inchi: Optional[str] = None
         self._fingerprints: Dict[Union[Tuple[int, int], Tuple[int]], np.ndarray] = {}
         self._is_sanitized: bool = False
 
@@ -59,6 +54,33 @@ class Molecule:
 
         if sanitize:
             self.sanitize()
+
+        self.parent = parent
+        if transform is None and parent and parent.transform is not None:
+            self.transform: int = parent.transform + 1
+        else:
+            self.transform = transform or 0
+
+        # Intern cache reference propagates through the parent chain so any
+        # TreeMolecule reachable from the root can look itself up by inchi_key.
+        # Step 1: plumb only. Lookups will be added in a follow-up.
+        if parent is not None:
+            self.intern_cache: Optional[Dict] = parent.intern_cache
+        else:
+            self.intern_cache = intern_cache
+
+        self.original_smiles = smiles
+        self.mapped_mol = Chem.Mol(self.rd_mol)
+        if not self.parent:
+            self._set_atom_mappings()
+        elif mapping_update_callback is not None:
+            mapping_update_callback(self)
+
+        AllChem.SanitizeMol(self.mapped_mol)
+        self.mapped_smiles = Chem.MolToSmiles(self.mapped_mol)
+
+        if self.parent is not None:
+            self.remove_atom_mapping()
 
     def __hash__(self) -> int:
         return hash(self.inchi_key)
@@ -73,21 +95,6 @@ class Molecule:
 
     def __str__(self) -> str:
         return self.smiles
-
-    @property
-    def inchi(self) -> str:
-        """
-        The inchi representation of the molecule
-        Created by lazy evaluation. Will cause the molecule to be sanitized.
-
-        :return: the inchi
-        """
-        if not self._inchi:
-            self.sanitize(raise_exception=False)
-            self._inchi = Chem.MolToInchi(self.rd_mol)
-            if self._inchi is None:
-                raise MoleculeException("Could not make InChI")
-        return self._inchi
 
     @property
     def inchi_key(self) -> str:
@@ -186,6 +193,21 @@ class Molecule:
             atom.SetAtomMapNum(0)
         self.smiles = Chem.MolToSmiles(self.rd_mol)
         self._clear_cache()
+
+    def _set_atom_mappings(self) -> None:
+        atom_mappings = [
+            atom.GetAtomMapNum()
+            for atom in self.mapped_mol.GetAtoms()
+            if atom.GetAtomMapNum() != 0
+        ]
+
+        mapper = max(atom_mappings) + 1 if atom_mappings else 1
+        self._atom_mappings = {}
+        for atom_index, atom in enumerate(self.mapped_mol.GetAtoms()):
+            if atom.GetAtomMapNum() == 0:
+                atom.SetAtomMapNum(mapper)
+                mapper += 1
+            self._atom_mappings[atom.GetAtomMapNum()] = atom_index
 
     def sanitize(self, raise_exception: bool = True) -> None:
         """

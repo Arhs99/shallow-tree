@@ -1,8 +1,5 @@
 from typing import Optional, Callable, Dict, List, Tuple, Sequence
 
-from dulwich.cli import cmd_stash_list
-from rdkit import Chem
-from rdkit.Chem import AllChem
 from rdkit.Chem import Mol
 
 from shallowtree.chem.molecules.molecule import Molecule
@@ -45,34 +42,9 @@ class TreeMolecule(Molecule):
             mapping_update_callback: Optional[Callable[["TreeMolecule"], None]] = None,
             intern_cache: Optional[Dict[str, "TreeMolecule"]] = None,
     ) -> None:
-        super().__init__(rd_mol=rd_mol, smiles=smiles, sanitize=sanitize)
-        self.parent = parent
-        if transform is None and parent and parent.transform is not None:
-            self.transform: int = parent.transform + 1
-        else:
-            self.transform = transform or 0
+        super().__init__(parent=parent, transform=transform, rd_mol=rd_mol, smiles=smiles, sanitize=sanitize,
+                         mapping_update_callback=mapping_update_callback, intern_cache=intern_cache)
 
-        # Intern cache reference propagates through the parent chain so any
-        # TreeMolecule reachable from the root can look itself up by inchi_key.
-        # Step 1: plumb only. Lookups will be added in a follow-up.
-        if parent is not None:
-            self.intern_cache: Optional[Dict[str, TreeMolecule]] = parent.intern_cache
-        else:
-            self.intern_cache = intern_cache
-
-        self.original_smiles = smiles
-        self.mapped_mol = Chem.Mol(self.rd_mol)
-        self._atom_bonds: List[Tuple[int, int]] = []
-        if not self.parent:
-            self._set_atom_mappings()
-        elif mapping_update_callback is not None:
-            mapping_update_callback(self)
-
-        AllChem.SanitizeMol(self.mapped_mol)
-        self.mapped_smiles = Chem.MolToSmiles(self.mapped_mol)
-
-        if self.parent:
-            self.remove_atom_mapping()
 
     @property
     def mapping_to_index(self) -> Dict[int, int]:
@@ -86,17 +58,17 @@ class TreeMolecule(Molecule):
         return self._atom_mappings
 
     @property
-    def mapped_atom_bonds(self) -> List[Tuple[int, int]]:
+    def mapped_atom_bonds(self) -> List[Tuple[int, int]]: #TODO: see if this is called often
         """Return a list of atom bonds as tuples on the mapped atom indices"""
         bonds = []
         for bond in self.mapped_mol.GetBonds():
             bonds.append((bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()))
 
-        self._atom_bonds = [
+        _atom_bonds = [
             (self.index_to_mapping[atom_index1], self.index_to_mapping[atom_index2])
             for atom_index1, atom_index2 in bonds
         ]
-        return self._atom_bonds
+        return _atom_bonds
 
     def get_bonds_in_molecule(self, query_bonds: Sequence[Sequence[int]]) -> Sequence[Sequence[int]]:
         """
@@ -120,17 +92,3 @@ class TreeMolecule(Molecule):
         bonds_in_mol = self.get_bonds_in_molecule(bonds)
         return len(bonds_in_mol) == len(bonds)
 
-    def _set_atom_mappings(self) -> None:
-        atom_mappings = [
-            atom.GetAtomMapNum()
-            for atom in self.mapped_mol.GetAtoms()
-            if atom.GetAtomMapNum() != 0
-        ]
-
-        mapper = max(atom_mappings) + 1 if atom_mappings else 1
-        self._atom_mappings = {}
-        for atom_index, atom in enumerate(self.mapped_mol.GetAtoms()):
-            if atom.GetAtomMapNum() == 0:
-                atom.SetAtomMapNum(mapper)
-                mapper += 1
-            self._atom_mappings[atom.GetAtomMapNum()] = atom_index
