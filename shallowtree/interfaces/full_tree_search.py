@@ -48,6 +48,7 @@ class Expander:
         self._logger = logger()
         self.app_config = app_config
 
+        self._intern_cache: LRUCache = LRUCache(maxsize=2000)
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
 
@@ -65,7 +66,6 @@ class Expander:
         # the parent chain. Bounded LRU: 2000 entries (~60 MB) covers the hot
         # working set; the multiplicity histogram shows ~83 % of dedup is
         # concentrated in the top few hundred most-duplicated InChI keys.
-        self._intern_cache: LRUCache = LRUCache(maxsize=2000)
         self.BBs = []
         self._cache_counter = 0
 
@@ -116,7 +116,7 @@ class Expander:
 
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
+            mol = TreeMolecule(parent=None, smiles=smi)
             self.BBs = []
             self._cache_counter = 0
 
@@ -133,7 +133,7 @@ class Expander:
         rows = []
         for smi in smiles:
             solution = defaultdict(list)
-            mol = TreeMolecule(parent=None, smiles=smi, intern_cache=self._intern_cache)
+            mol = TreeMolecule(parent=None, smiles=smi)
             self.BBs = []
             self._cache_counter = 0
 
@@ -412,4 +412,4 @@ class Expander:
         extra_template_path = app_config.extra_template_path if app_config.extra_template_path \
             else Path(__file__).parent.parent / 'rules' / 'direct.csv'
 
-        return TemplateRules(extra_template_path)
+        return TemplateRules(extra_template_path, self._intern_cache)

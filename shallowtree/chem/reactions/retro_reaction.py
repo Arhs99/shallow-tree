@@ -33,6 +33,7 @@ class RetroReaction(abc.ABC):
             mol: TreeMolecule,
             index: int = 0,
             metadata: Optional[Dict] = None,
+            intern_cache: Optional[Dict] = None,
             **kwargs: Any,
     ) -> None:
         if any(name not in kwargs for name in self._required_kwargs):
@@ -45,6 +46,7 @@ class RetroReaction(abc.ABC):
         self.metadata: Dict = metadata or {}
         self._reactants: Optional[Tuple[Tuple[TreeMolecule, ...], ...]] = None
         self._smiles: Optional[str] = None
+        self.intern_cache = intern_cache
         self._kwargs: Dict = kwargs
 
     def __str__(self) -> str:
