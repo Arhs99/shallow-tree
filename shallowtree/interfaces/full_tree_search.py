@@ -397,7 +397,7 @@ class Expander:
     def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]):
         expansion_policy = ExpansionPolicy()
         for expansion_config in expansion_configs:
-            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config)
+            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config, self._intern_cache)
             expansion_policy.load(expansion_strategy)
         return expansion_policy
 
