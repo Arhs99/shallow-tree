@@ -30,7 +30,6 @@ if TYPE_CHECKING:
         PilColor,
         PilImage,
         Sequence,
-        StrDict,
         Tuple,
         Union,
     )
@@ -252,6 +251,82 @@ def make_visjs_page(
     shutil.make_archive(basename, "tar", root_dir=tmpdir)
 
 
+def flat_route_to_dict(
+    route: Dict[int, list],
+    root_smiles: str = None,
+    in_stock: Any = None,
+) -> Dict[str, Any]:
+    """
+    Convert the flat, depth-keyed route produced by ``Expander.search_tree`` into the
+    nested ``mol -> reaction -> mols`` dictionary that :class:`RouteImageFactory`
+    expects. The output mirrors the shape of aizynthfinder's
+    ``ReactionTree.to_dict`` / ``_build_dict`` (aizynthfinder/reactiontree.py).
+
+    The search stores a route as ``{depth: [["product => r1.r2", classification], ...]}``.
+    Each ``product`` that itself appears on the left of another entry is an internal node;
+    the rest are leaves (building blocks).
+
+    :param route: the depth-keyed route dict (the ``route`` column of the search output)
+    :param root_smiles: the SMILES of the target molecule. If None, it is taken from the
+                        shallowest reaction's product — which is the search's canonical
+                        SMILES for the root (the raw query SMILES may not match the
+                        canonical keys used inside the route).
+    :param in_stock: optional set of in-stock SMILES, or a predicate ``smiles -> bool``.
+                     If None, every leaf is rendered as in-stock (green).
+    :return: a nested route dict consumable by :class:`RouteImageFactory`
+    """
+    expansions: Dict[str, Tuple[list, Any]] = {}
+    for depth in sorted(route):
+        for entry in route[depth]:
+            rxn_str = entry[0]
+            classification = entry[1] if len(entry) > 1 else None
+            product, _, reactants_str = rxn_str.partition(" => ")
+            reactants = [r for r in reactants_str.split(".") if r]
+            # First definition wins if a product somehow recurs (cache keys are unique)
+            expansions.setdefault(product.strip(), (reactants, classification))
+
+    if root_smiles is None:
+        if not route:
+            raise ValueError("Cannot infer root from an empty route")
+        shallowest = route[min(route)]
+        root_smiles = shallowest[0][0].partition(" => ")[0].strip()
+
+    def _is_in_stock(smiles: str) -> bool:
+        if in_stock is None:
+            return True
+        if callable(in_stock):
+            return bool(in_stock(smiles))
+        return smiles in in_stock
+
+    def _build(smiles: str) -> Dict[str, Any]:
+        # mol node, mirroring ReactionTree._build_dict
+        node: Dict[str, Any] = {
+            "type": "mol",
+            "hide": False,
+            "smiles": smiles,
+            "is_chemical": True,
+            "in_stock": False,
+        }
+        if smiles in expansions:
+            reactants, classification = expansions[smiles]
+            node["children"] = [
+                {
+                    "type": "reaction",
+                    "hide": False,
+                    "smiles": "",
+                    "is_reaction": True,
+                    "metadata": {"classification": classification},
+                    "children": [_build(reactant) for reactant in reactants],
+                }
+            ]
+        else:
+            # Leaf: no children key (matches _build_dict), mark stock status
+            node["in_stock"] = _is_in_stock(smiles)
+        return node
+
+    return _build(root_smiles)
+
+
 class RouteImageFactory:
     """
     Factory class for drawing a route
@@ -264,7 +339,7 @@ class RouteImageFactory:
 
     def __init__(
         self,
-        route: StrDict,
+        route: Dict[str, Any],
         in_stock_colors: FrameColors = None,
         show_all: bool = True,
         margin: int = 100,
@@ -276,8 +351,8 @@ class RouteImageFactory:
         self.show_all: bool = show_all
         self.margin: int = margin
 
-        self._stock_lookup: StrDict = {}
-        self._mol_lookup: StrDict = {}
+        self._stock_lookup: Dict[str, Any] = {}
+        self._mol_lookup: Dict[str, Any] = {}
         self._extract_molecules(route)
         images = molecules_to_images(
             list(self._mol_lookup.values()),
@@ -304,7 +379,7 @@ class RouteImageFactory:
         self._make_image(self._mol_tree)
         self.image = crop_image(self.image)
 
-    def _add_effective_size(self, tree_dict: StrDict) -> None:
+    def _add_effective_size(self, tree_dict: Dict[str, Any]) -> None:
         children = tree_dict.get("children", [])
         for child in children:
             self._add_effective_size(child)
@@ -321,7 +396,7 @@ class RouteImageFactory:
             tree_dict["eff_height"] = tree_dict["image"].size[1]
             tree_dict["eff_width"] = tree_dict["image"].size[0] + self.margin
 
-    def _add_pos(self, tree_dict: StrDict, pos: Tuple[int, int]) -> None:
+    def _add_pos(self, tree_dict: Dict[str, Any], pos: Tuple[int, int]) -> None:
         tree_dict["left"] = pos[0]
         tree_dict["top"] = pos[1]
         children = tree_dict.get("children")
@@ -357,7 +432,7 @@ class RouteImageFactory:
                 )
             self._add_pos(child, (child_x, child_y))
 
-    def _extract_mol_tree(self, tree_dict: StrDict) -> StrDict:
+    def _extract_mol_tree(self, tree_dict: Dict[str, Any]) -> Dict[str, Any]:
         dict_ = {
             "smiles": tree_dict["smiles"],
             "image": self._image_lookup[tree_dict["smiles"]],
@@ -370,14 +445,14 @@ class RouteImageFactory:
             ]
         return dict_
 
-    def _extract_molecules(self, tree_dict: StrDict) -> None:
+    def _extract_molecules(self, tree_dict: Dict[str, Any]) -> None:
         if tree_dict["type"] == "mol":
             self._stock_lookup[tree_dict["smiles"]] = tree_dict.get("in_stock", False)
             self._mol_lookup[tree_dict["smiles"]] = Molecule(smiles=tree_dict["smiles"])
         for child in tree_dict.get("children", []):
             self._extract_molecules(child)
 
-    def _make_image(self, tree_dict: StrDict) -> None:
+    def _make_image(self, tree_dict: Dict[str, Any]) -> None:
         self.image.paste(tree_dict["image"], (tree_dict["left"], tree_dict["top"]))
         children = tree_dict.get("children")
         if not children:
