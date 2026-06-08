@@ -11,38 +11,8 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class ScaffoldSearch(BaseTreeSearch):
 
-    @staticmethod
-    def _parse_scaffold_query(scaffold_str: str):
-        # Try SMILES first so RDKit perceives aromaticity — lets Kekulé-form
-        # scaffolds (e.g. "C1N=CSC=1...") match aromatic targets. Promote to a
-        # query mol so dummy atoms ([*] / *) behave as wildcards. Fall back to
-        # SMARTS for true SMARTS expressions like [#6;R], [!#1], recursive SMARTS.
-        mol = Chem.MolFromSmiles(scaffold_str)
-        if mol is not None:
-            return Chem.AdjustQueryProperties(mol)
-        return Chem.MolFromSmarts(scaffold_str)
-
-    @staticmethod
-    def _scaffold_wildcard_info(scaffold):
-        # If the scaffold has exactly one leaf wildcard ([*] / *, atomic
-        # num 0, degree 1), return (wildcard_atom_idx, stripped_scaffold).
-        # The stripped scaffold (wildcard atom removed) is what we match
-        # against a reactant whose disconnection cut the wildcard bond and
-        # produced an H-terminated end (e.g. Williamson retro: ArO[*] ->
-        # ArOH + [*]-X). Returns None when the relaxed boundary check
-        # should not apply (no wildcard, multiple wildcards, or internal
-        # wildcard).
-        wildcards = [i for i, a in enumerate(scaffold.GetAtoms()) if a.GetAtomicNum() == 0]
-        if len(wildcards) != 1:
-            return None
-        wildcard_idx = wildcards[0]
-        if scaffold.GetAtomWithIdx(wildcard_idx).GetDegree() != 1:
-            return None
-        rw = Chem.RWMol(scaffold)
-        rw.RemoveAtom(wildcard_idx)
-        return wildcard_idx, rw.GetMol()
-
-    def search(self, smiles: List[str], scaffold_str: str, max_depth=2) -> pd.DataFrame:
+    def search(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
+        scaffold_str = self._input_config.scaffold
         self.max_depth = max_depth
         rows = []
         context_scaffold = self._parse_scaffold_query(scaffold_str)
@@ -129,6 +99,37 @@ class ScaffoldSearch(BaseTreeSearch):
         tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
         for x in rxn:
             self.best_route(x, depth + 1, tree, context_scaffold, context_scaffold_stripped)
+
+    @staticmethod
+    def _parse_scaffold_query(scaffold_str: str):
+        # Try SMILES first so RDKit perceives aromaticity — lets Kekulé-form
+        # scaffolds (e.g. "C1N=CSC=1...") match aromatic targets. Promote to a
+        # query mol so dummy atoms ([*] / *) behave as wildcards. Fall back to
+        # SMARTS for true SMARTS expressions like [#6;R], [!#1], recursive SMARTS.
+        mol = Chem.MolFromSmiles(scaffold_str)
+        if mol is not None:
+            return Chem.AdjustQueryProperties(mol)
+        return Chem.MolFromSmarts(scaffold_str)
+
+    @staticmethod
+    def _scaffold_wildcard_info(scaffold: Mol) -> Tuple:
+        # If the scaffold has exactly one leaf wildcard ([*] / *, atomic
+        # num 0, degree 1), return (wildcard_atom_idx, stripped_scaffold).
+        # The stripped scaffold (wildcard atom removed) is what we match
+        # against a reactant whose disconnection cut the wildcard bond and
+        # produced an H-terminated end (e.g. Williamson retro: ArO[*] ->
+        # ArOH + [*]-X). Returns None when the relaxed boundary check
+        # should not apply (no wildcard, multiple wildcards, or internal
+        # wildcard).
+        wildcards = [i for i, a in enumerate(scaffold.GetAtoms()) if a.GetAtomicNum() == 0]
+        if len(wildcards) != 1:
+            return None
+        wildcard_idx = wildcards[0]
+        if scaffold.GetAtomWithIdx(wildcard_idx).GetDegree() != 1:
+            return None
+        rw = Chem.RWMol(scaffold)
+        rw.RemoveAtom(wildcard_idx)
+        return wildcard_idx, rw.GetMol()
 
     @staticmethod
     def _find_strict_boundary_match(reactants, scaffold, root_match):

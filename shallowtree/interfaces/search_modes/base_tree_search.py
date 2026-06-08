@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 
 from rdkit.Chem.rdchem import Mol
+from shallowtree.configs.input_configuration import InputConfiguration
 
 from shallowtree.chem.molecules.tree_molecule import TreeMolecule
 from shallowtree.configs.application_configuration import ApplicationConfiguration
@@ -12,6 +13,7 @@ from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.configs.filter_configuration import FilterConfiguration
 from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.cache.redis_cache import RedisCache
+from shallowtree.context.config import Configuration
 from shallowtree.context.expansion_strategies.template_based_expansion_strategy import TemplateBasedExpansionStrategy
 from shallowtree.context.expansion_strategies.template_rules import TemplateRules
 from shallowtree.context.filters.quick_keras_filter import QuickKerasFilter
@@ -24,8 +26,11 @@ from shallowtree.utils.lru import LRUCache
 
 
 class BaseTreeSearch(abc.ABC):
-    def __init__(self, app_config: ApplicationConfiguration):
+    def __init__(self, input_config: InputConfiguration):
+        config_dict = Configuration.from_json(input_config.app_configuration_path)
+        app_config = ApplicationConfiguration(**config_dict)
         self._logger = logger()
+        self._input_config = input_config
         self.app_config = app_config
 
         self._intern_cache: LRUCache = LRUCache(maxsize=2000)
@@ -33,7 +38,7 @@ class BaseTreeSearch(abc.ABC):
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
 
         self.stock = self._setup_stock(app_config.stock) if app_config.prebuilt_stock is None \
-            else app_config.prebuilt_stock
+            else self._input_config.prebuilt_stock
 
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 

@@ -4,16 +4,14 @@ from typing import List
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from shallowtree.configs.input_configuration import InputConfiguration
-
 from shallowtree.configs.application_configuration import ApplicationConfiguration
+from shallowtree.configs.input_configuration import InputConfiguration
 from shallowtree.configs.stock_configuration import StockConfiguration
 from shallowtree.context.config import Configuration
 from shallowtree.context.stock.queries import InMemoryInchiKeyQuery
 from shallowtree.context.stock.shared_inchi_key_set import SharedInchiKeySet
 from shallowtree.context.stock.shared_stock_query import SharedInchiKeyQuery
 from shallowtree.context.stock.stock import Stock
-from shallowtree.interfaces.full_tree_search import Expander
 from shallowtree.interfaces.search_modes.scaffold_search import ScaffoldSearch
 from shallowtree.interfaces.search_modes.standard_search import StandardSearch
 
@@ -59,15 +57,13 @@ def parallel_search(input_config: InputConfiguration):
 
     def parallel_run(input_c: InputConfiguration):
         stock = _build_worker_stock(shm_name, shm_count)
-        app_config.prebuilt_stock = stock
-        search = ScaffoldSearch(app_config) if input_c.scaffold else StandardSearch(app_config) #TODO: use factory
+        input_config.prebuilt_stock = stock
+        search = ScaffoldSearch(input_config) if input_c.scaffold else StandardSearch(input_config) #TODO: use factory
         search.expansion_policy.select_first()
         search.filter_policy.select_first()
         search.stock.select_first()
-        if input_c.scaffold:
-            df = search.search(input_c.smiles, scaffold_str=input_c.scaffold, max_depth=input_c.depth)
-        else:
-            df = search.search(input_c.smiles, max_depth=input_c.depth)
+        df = search.search(input_c.smiles,  max_depth=input_c.depth)
+
         if not input_c.routes:
             df = df.drop(columns=['route'])
         return df
@@ -88,17 +84,14 @@ def sequential_search(input_config: InputConfiguration):
     shared = _build_shared_stock(app_config.stock)
     shm_name, shm_count = shared.shm_name, len(shared)
     stock = _build_worker_stock(shm_name, shm_count)
-    app_config.prebuilt_stock = stock
+    input_config.prebuilt_stock = stock
 
-    search = ScaffoldSearch(app_config) if input_config.scaffold else StandardSearch(app_config) #TODO: use factory
+    search = ScaffoldSearch(input_config) if input_config.scaffold else StandardSearch(input_config) #TODO: use factory
     search.expansion_policy.select_first()
     search.filter_policy.select_first()
     search.stock.select_first()
 
-    if input_config.scaffold:
-        df = search.search(input_config.smiles, scaffold_str=input_config.scaffold, max_depth=input_config.depth)
-    else:
-        df = search.search(input_config.smiles, max_depth=input_config.depth)
+    df = search.search(input_config.smiles, max_depth=input_config.depth)
 
     if not input_config.routes:
         df = df.drop(columns=['route'])
