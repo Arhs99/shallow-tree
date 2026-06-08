@@ -28,46 +28,6 @@ class StandardSearch(BaseTreeSearch):
         df = pd.DataFrame(rows)
         return df
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
-        if depth > self.max_depth:
-            return 0.0
-
-        if mol.inchi_key in self.cache:
-            cdepth, cscore = self.cache[mol.inchi_key]
-            if cdepth <= depth:
-                return cscore
-
-        if mol in self.stock:
-            self.cache[mol.inchi_key] = (0, 1.0)
-            return 1.0
-
-        # Check Redis cache if local cache miss
-        if self.redis_cache and mol.inchi_key not in self.cache:
-            redis_cache_data = self.redis_cache.get_cache(mol.inchi_key)
-            if redis_cache_data:
-                cdepth, cscore = redis_cache_data
-                self.cache[mol.inchi_key] = (cdepth, cscore)  # Populate local cache
-                if cdepth <= depth:
-                    # Also try to load solved data
-                    solved_data = self.redis_cache.get_solved(mol.inchi_key)
-                    if solved_data:
-                        self.solved[mol.inchi_key] = solved_data
-                    return cscore
-
-        feasible_actions = self._determine_feasible_actions(mol)
-
-        score = 0.0
-        for action in feasible_actions:
-            reactants = action.reactants
-            score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
-            if score > self.app_config.search.score_acceptance_threshold:
-                self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
-                self._update_cache(mol, depth, score)
-                return score
-
-        self._update_cache(mol, depth, score)
-        return score
-
     def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict):
         # Past the depth limit a node is a route leaf — never expand it further,
         # even if it is in self.solved (that knowledge came from a shallower
@@ -94,10 +54,4 @@ class StandardSearch(BaseTreeSearch):
             self._save_to_redis()  # Persist to Redis if available and successful
         rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
         return rows
-
-    def _update_cache(self, mol: TreeMolecule, depth: int, score: float):
-        self.cache[mol.inchi_key] = (depth, score)
-        if self.redis_cache:
-            self.redis_cache.set_cache(mol.inchi_key, depth, score)
-
 
