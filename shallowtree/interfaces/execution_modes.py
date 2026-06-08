@@ -12,8 +12,7 @@ from shallowtree.context.stock.queries import InMemoryInchiKeyQuery
 from shallowtree.context.stock.shared_inchi_key_set import SharedInchiKeySet
 from shallowtree.context.stock.shared_stock_query import SharedInchiKeyQuery
 from shallowtree.context.stock.stock import Stock
-from shallowtree.interfaces.search_modes.scaffold_search import ScaffoldSearch
-from shallowtree.interfaces.search_modes.standard_search import StandardSearch
+from shallowtree.interfaces.search_modes.tree_search import TreeSearch
 
 
 def clone_config(input_config: InputConfiguration, smiles:List[str]):
@@ -58,7 +57,7 @@ def parallel_search(input_config: InputConfiguration):
     def parallel_run(input_c: InputConfiguration):
         stock = _build_worker_stock(shm_name, shm_count)
         input_config.prebuilt_stock = stock
-        search = ScaffoldSearch(input_config) if input_c.scaffold else StandardSearch(input_config) #TODO: use factory
+        search = TreeSearch(input_config)
         search.expansion_policy.select_first()
         search.filter_policy.select_first()
         search.stock.select_first()
@@ -86,7 +85,7 @@ def sequential_search(input_config: InputConfiguration):
     stock = _build_worker_stock(shm_name, shm_count)
     input_config.prebuilt_stock = stock
 
-    search = ScaffoldSearch(input_config) if input_config.scaffold else StandardSearch(input_config) #TODO: use factory
+    search = TreeSearch(input_config)
     search.expansion_policy.select_first()
     search.filter_policy.select_first()
     search.stock.select_first()
