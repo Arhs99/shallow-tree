@@ -30,7 +30,6 @@ if TYPE_CHECKING:
         PilColor,
         PilImage,
         Sequence,
-        StrDict,
         Tuple,
         Union,
     )
@@ -256,7 +255,7 @@ def flat_route_to_dict(
     route: Dict[int, list],
     root_smiles: str = None,
     in_stock: Any = None,
-) -> StrDict:
+) -> Dict[str, Any]:
     """
     Convert the flat, depth-keyed route produced by ``Expander.search_tree`` into the
     nested ``mol -> reaction -> mols`` dictionary that :class:`RouteImageFactory`
@@ -299,9 +298,9 @@ def flat_route_to_dict(
             return bool(in_stock(smiles))
         return smiles in in_stock
 
-    def _build(smiles: str) -> StrDict:
+    def _build(smiles: str) -> Dict[str, Any]:
         # mol node, mirroring ReactionTree._build_dict
-        node: StrDict = {
+        node: Dict[str, Any] = {
             "type": "mol",
             "hide": False,
             "smiles": smiles,
@@ -340,7 +339,7 @@ class RouteImageFactory:
 
     def __init__(
         self,
-        route: StrDict,
+        route: Dict[str, Any],
         in_stock_colors: FrameColors = None,
         show_all: bool = True,
         margin: int = 100,
@@ -352,8 +351,8 @@ class RouteImageFactory:
         self.show_all: bool = show_all
         self.margin: int = margin
 
-        self._stock_lookup: StrDict = {}
-        self._mol_lookup: StrDict = {}
+        self._stock_lookup: Dict[str, Any] = {}
+        self._mol_lookup: Dict[str, Any] = {}
         self._extract_molecules(route)
         images = molecules_to_images(
             list(self._mol_lookup.values()),
@@ -380,7 +379,7 @@ class RouteImageFactory:
         self._make_image(self._mol_tree)
         self.image = crop_image(self.image)
 
-    def _add_effective_size(self, tree_dict: StrDict) -> None:
+    def _add_effective_size(self, tree_dict: Dict[str, Any]) -> None:
         children = tree_dict.get("children", [])
         for child in children:
             self._add_effective_size(child)
@@ -397,7 +396,7 @@ class RouteImageFactory:
             tree_dict["eff_height"] = tree_dict["image"].size[1]
             tree_dict["eff_width"] = tree_dict["image"].size[0] + self.margin
 
-    def _add_pos(self, tree_dict: StrDict, pos: Tuple[int, int]) -> None:
+    def _add_pos(self, tree_dict: Dict[str, Any], pos: Tuple[int, int]) -> None:
         tree_dict["left"] = pos[0]
         tree_dict["top"] = pos[1]
         children = tree_dict.get("children")
@@ -433,7 +432,7 @@ class RouteImageFactory:
                 )
             self._add_pos(child, (child_x, child_y))
 
-    def _extract_mol_tree(self, tree_dict: StrDict) -> StrDict:
+    def _extract_mol_tree(self, tree_dict: Dict[str, Any]) -> Dict[str, Any]:
         dict_ = {
             "smiles": tree_dict["smiles"],
             "image": self._image_lookup[tree_dict["smiles"]],
@@ -446,14 +445,14 @@ class RouteImageFactory:
             ]
         return dict_
 
-    def _extract_molecules(self, tree_dict: StrDict) -> None:
+    def _extract_molecules(self, tree_dict: Dict[str, Any]) -> None:
         if tree_dict["type"] == "mol":
             self._stock_lookup[tree_dict["smiles"]] = tree_dict.get("in_stock", False)
             self._mol_lookup[tree_dict["smiles"]] = Molecule(smiles=tree_dict["smiles"])
         for child in tree_dict.get("children", []):
             self._extract_molecules(child)
 
-    def _make_image(self, tree_dict: StrDict) -> None:
+    def _make_image(self, tree_dict: Dict[str, Any]) -> None:
         self.image.paste(tree_dict["image"], (tree_dict["left"], tree_dict["top"]))
         children = tree_dict.get("children")
         if not children:
