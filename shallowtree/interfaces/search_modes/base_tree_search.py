@@ -37,7 +37,7 @@ class BaseTreeSearch(abc.ABC):
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
 
-        self.stock = self._setup_stock(app_config.stock) if app_config.prebuilt_stock is None \
+        self.stock = self._setup_stock(app_config.stock) if self._input_config.prebuilt_stock is None \
             else self._input_config.prebuilt_stock
 
         self.redis_cache = self._setup_redis_cache(app_config.cache)
