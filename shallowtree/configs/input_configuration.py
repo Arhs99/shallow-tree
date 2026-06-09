@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional, Any
 
 
 @dataclass
@@ -11,3 +11,4 @@ class InputConfiguration:
     routes: bool = True
     depth: int = 2
     parallel_processes: int = 1
+    prebuilt_stock: Optional[Any] = None

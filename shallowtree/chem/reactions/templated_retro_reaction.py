@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial, lru_cache
-from typing import Optional, Any, Tuple, Set
+from typing import Optional, Any, Tuple, Set, Dict
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -36,9 +36,10 @@ class TemplatedRetroReaction(RetroReaction):
             mol: TreeMolecule,
             index: int = 0,
             metadata: Optional[StrDict] = None,
+            intern_cache: Optional[Dict] = None,
             **kwargs: Any,
     ):
-        super().__init__(mol, index, metadata, **kwargs)
+        super().__init__(mol, index, metadata, intern_cache, **kwargs)
         self.smarts: str = kwargs["smarts"]
         self._rd_reaction: Optional[Chem.rdChemReactions.ChemicalReaction] = None
 
@@ -70,7 +71,7 @@ class TemplatedRetroReaction(RetroReaction):
             update_func = partial(self._inherit_atom_mapping, exclude_nums=exclude_nums)
             try:
                 mols = tuple(
-                    self._make_or_intern_reactant(rdmol, update_func, self.mol.intern_cache)
+                    self._make_or_intern_reactant(rdmol, update_func, self.intern_cache)
                     for rdmol in reactants
                 )
             except MoleculeException:

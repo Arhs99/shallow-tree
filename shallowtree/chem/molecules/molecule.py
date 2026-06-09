@@ -30,7 +30,7 @@ class Molecule:
     def __init__(self,  parent: Optional, transform: Optional[int] = None, rd_mol: Optional[Mol] = None,
                  smiles: Optional[str] = None,sanitize: bool = False,
                  mapping_update_callback: Optional[Callable] = None,
-                 intern_cache: Optional[Dict] = None,) :
+                 ) :
         if not rd_mol and not smiles:
             raise MoleculeException(
                 "Need to provide either a rdkit Mol object or smiles to create a molecule"
@@ -60,14 +60,6 @@ class Molecule:
             self.transform: int = parent.transform + 1
         else:
             self.transform = transform or 0
-
-        # Intern cache reference propagates through the parent chain so any
-        # TreeMolecule reachable from the root can look itself up by inchi_key.
-        # Step 1: plumb only. Lookups will be added in a follow-up.
-        if parent is not None:
-            self.intern_cache: Optional[Dict] = parent.intern_cache
-        else:
-            self.intern_cache = intern_cache
 
         self.original_smiles = smiles
         self.mapped_mol = Chem.Mol(self.rd_mol)
