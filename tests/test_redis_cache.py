@@ -37,18 +37,21 @@ def _mock_policies():
     return filter_policy, expansion_policy, stock
 
 
-def _create_cache(fake_redis_client, filter_policy=None, expansion_policy=None, stock=None):
+def _create_cache(fake_redis_client, filter_policy=None, expansion_policy=None, stock=None,
+                  namespace=None):
     """Create a RedisCache with a fakeredis backend."""
     from shallowtree.context.cache.redis_cache import RedisCache
 
     if filter_policy is None:
         filter_policy, expansion_policy, stock = _mock_policies()
 
+    kwargs = {} if namespace is None else {"namespace": namespace}
     with patch("redis.Redis", return_value=fake_redis_client):
         cache = RedisCache(
             filter_policy=filter_policy,
             expansion_policy=expansion_policy,
             stock=stock,
+            **kwargs,
         )
     return cache
 
@@ -168,6 +171,15 @@ class TestKeyFormat(unittest.TestCase):
         self.assertTrue(key.startswith("shallowtree:"))
         self.assertIn(":solved:TESTKEY123", key)
 
+    def test_namespace_in_key(self):
+        cache = _create_cache(self.fake_redis, namespace="scaffold:abc123")
+        key = cache._make_key("solved", "TESTKEY123")
+        self.assertIn(":scaffold:abc123:solved:TESTKEY123", key)
+
+    def test_default_namespace_is_standard(self):
+        self.assertIn(":standard:cache:TESTKEY123",
+                      self.cache._make_key("cache", "TESTKEY123"))
+
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
 class TestConnectionErrors(unittest.TestCase):
@@ -202,6 +214,36 @@ class TestConfigIsolation(unittest.TestCase):
         cache1.set_cache("SHARED_KEY", 1, 0.9)
         self.assertIsNone(cache2.get_cache("SHARED_KEY"))
         self.assertEqual(cache1.get_cache("SHARED_KEY"), (1, 0.9))
+
+
+@unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
+class TestNamespaceIsolation(unittest.TestCase):
+    """Same config, different search-mode namespace must not share entries.
+
+    Guards against cross-mode cache poisoning: a scaffold (context) search
+    persists a solved route whose scaffold terminal is not in stock, and a
+    standard search must never recover it.
+    """
+
+    def test_modes_do_not_share_solved(self):
+        fake_redis = fakeredis.FakeRedis(decode_responses=True)
+        standard = _create_cache(fake_redis, namespace="standard")
+        scaffold = _create_cache(fake_redis, namespace="scaffold:abc123")
+
+        reactants = [MockTreeMolecule("CCO")]
+        scaffold.set_solved("ROOT", reactants, 1.0, "Context terminal")
+
+        self.assertIsNone(standard.get_solved("ROOT"))
+        self.assertIsNotNone(scaffold.get_solved("ROOT"))
+
+    def test_distinct_scaffolds_do_not_share_solved(self):
+        fake_redis = fakeredis.FakeRedis(decode_responses=True)
+        scaffold_a = _create_cache(fake_redis, namespace="scaffold:aaa")
+        scaffold_b = _create_cache(fake_redis, namespace="scaffold:bbb")
+
+        scaffold_a.set_cache("KEY", 1, 0.9)
+        self.assertIsNone(scaffold_b.get_cache("KEY"))
+        self.assertEqual(scaffold_a.get_cache("KEY"), (1, 0.9))
 
 
 if __name__ == "__main__":
