@@ -27,7 +27,7 @@ class Molecule:
     :raises MoleculeException: if neither rd_mol or smiles is given, or if the molecule could not be sanitized
     """
 
-    def __init__(self,  parent: Optional, transform: Optional[int] = None, rd_mol: Optional[Mol] = None,
+    def __init__(self,  parent: Optional["Molecule"] = None, transform: Optional[int] = None, rd_mol: Optional[Mol] = None,
                  smiles: Optional[str] = None,sanitize: bool = False,
                  mapping_update_callback: Optional[Callable] = None,
                  ) :
