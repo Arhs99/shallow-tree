@@ -39,7 +39,7 @@ def _build_shared_stock(stock_configs: List[StockConfiguration]) -> SharedInchiK
 def _build_worker_stock(shm_name: str, shm_count: int) -> Stock:
     """Worker-side: attach to the shared inchi-key block and wrap it in a Stock."""
     attached = SharedInchiKeySet.attach(shm_name, shm_count)
-    stock = Stock()
+    stock = Stock([])
     stock.load(SharedInchiKeyQuery(attached), key="shared")
     return stock
 
@@ -57,10 +57,8 @@ def parallel_search(input_config: InputConfiguration):
     def parallel_run(input_c: InputConfiguration):
         stock = _build_worker_stock(shm_name, shm_count)
         input_config.prebuilt_stock = stock
+
         search = TreeSearch(input_config)
-        search.expansion_policy.select_first()
-        search.filter_policy.select_first()
-        search.stock.select_first()
         df = search.search(input_c.smiles,  max_depth=input_c.depth)
 
         if not input_c.routes:
@@ -86,10 +84,6 @@ def sequential_search(input_config: InputConfiguration):
     input_config.prebuilt_stock = stock
 
     search = TreeSearch(input_config)
-    search.expansion_policy.select_first()
-    search.filter_policy.select_first()
-    search.stock.select_first()
-
     df = search.search(input_config.smiles, max_depth=input_config.depth)
 
     if not input_config.routes:

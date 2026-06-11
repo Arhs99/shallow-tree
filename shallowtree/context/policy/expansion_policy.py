@@ -22,8 +22,11 @@ class ExpansionPolicy(ContextCollection):
 
     _collection_name = "expansion policy"
 
-    def __init__(self):
+    def __init__(self, expansion_strategies: List[ExpansionStrategy]):
         super().__init__()
+        for strategy in expansion_strategies:
+            self.load(strategy)
+        self.select_first()
 
     def get_actions(self, molecules: Sequence[TreeMolecule], cache_molecules: Sequence[TreeMolecule] = None, ) \
             -> Tuple[List[RetroReaction], List[float]]:

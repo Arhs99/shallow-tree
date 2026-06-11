@@ -47,6 +47,9 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
         self.BBs = []
+        self.expansion_policy.select_first()
+        self.filter_policy.select_first()
+        self.stock.select_first()
 
     def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
         if depth > self.max_depth:
@@ -191,24 +194,23 @@ class BaseTreeSearch(abc.ABC):
             return None
 
     def _setup_stock(self, stock_configs: List[StockConfiguration]):
-        stock = Stock()
-        for stock_config in stock_configs:
-            stock.load_stocks(stock_config)
+        stock = Stock(stock_configs)
         return stock
 
     def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]):
-        expansion_policy = ExpansionPolicy()
-        for expansion_config in expansion_configs:
-            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config,
-                                                                self._intern_cache)
-            expansion_policy.load(expansion_strategy)
+        strategies = []
+        for expansion_config in expansion_configs:#TODO: logic below should be handled by a factory
+            expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config, self._intern_cache)
+            strategies.append(expansion_strategy)
+        expansion_policy = ExpansionPolicy(strategies)
         return expansion_policy
 
     def _setup_filter_policy(self, filter_configs: List[FilterConfiguration]):
-        filter_policy = FilterPolicy()
-        for filter_config in filter_configs:
+        strategies = []
+        for filter_config in filter_configs:#TODO: logic below should be handled by a factory
             filter_strategy = QuickKerasFilter(filter_config.filter_name, filter_config)
-            filter_policy.load(filter_strategy)
+            strategies.append(filter_strategy)
+        filter_policy = FilterPolicy(strategies)
         return filter_policy
 
     def _setup_rules_expansion(self, app_config) -> TemplateRules :

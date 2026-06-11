@@ -43,11 +43,14 @@ class Stock(ContextCollection):
 
     _collection_name = "stock"
 
-    def __init__(self) -> None:
+    def __init__(self,  stock_configs: List[StockConfiguration]) -> None:
         super().__init__()
         self._exclude: Set[str] = set()
         self._stop_criteria: Dict[str, Any] = {"amount": None, "price": None, "counts": {}}
         self._use_stop_criteria: bool = False
+        for stock_config in stock_configs:
+            self.load_stocks(stock_config)
+        self.select_first()
 
     def __contains__(self, mol: Molecule) -> bool:
         if not self.selection or mol.inchi_key in self._exclude:

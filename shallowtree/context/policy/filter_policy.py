@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.context.collection import ContextCollection
 from shallowtree.context.filters.filter_strategy import FilterStrategy
@@ -17,8 +19,11 @@ class FilterPolicy(ContextCollection):
 
     _collection_name = "filter policy"
 
-    def __init__(self):
+    def __init__(self, strategies: List[FilterStrategy]):
         super().__init__()
+        for strategy in strategies:
+            self.load(strategy)
+        self.select_first()
 
     def __call__(self, reaction: RetroReaction):
         return self.apply(reaction)
@@ -56,4 +61,4 @@ class FilterPolicy(ContextCollection):
 
         for name in self.selection:
             if hasattr(self[name], "reset_cache"):
-                self[name].reset_cache()
+                self._items[name].reset_cache()
