@@ -30,7 +30,6 @@ from rdkit import Chem
 
 from shallowtree.configs.application_configuration import ApplicationConfiguration
 from shallowtree.context.config import Configuration
-from shallowtree.interfaces.full_tree_search import Expander
 
 # Module-level singleton (one per uvicorn worker process)
 _expander: Optional[Expander] = None

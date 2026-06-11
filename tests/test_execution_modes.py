@@ -25,8 +25,6 @@ class TestExecutionModes(unittest.TestCase):
         self.scaffold_config = InputConfiguration(app_configuration_path=str(REPO_ROOT / "application_config/config.json"),
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3)
-        config_dict = Configuration.from_json(self.standard_config.app_configuration_path)
-        self.app_config = ApplicationConfiguration(**config_dict)
 
     def test_parallel_standard_search(self):
         # expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]

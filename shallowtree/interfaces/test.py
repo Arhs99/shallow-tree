@@ -1,6 +1,6 @@
 import time
-from shallowtree.interfaces.full_tree_search import Expander
-import multiprocessing as mp
+
+from shallowtree.interfaces.search_modes.tree_search import TreeSearch
 
 config_filename = '/home/kostas/data/aizynth/config_remote.yml'
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     ]
 
     start = time.time()
-    expander = Expander(configfile=config_filename)
+    expander = TreeSearch(configfile=config_filename)
     expander.expansion_policy.select_first()
     print(f'Load exp policy: {time.time() - start} sec')
     expander.filter_policy.select_first()

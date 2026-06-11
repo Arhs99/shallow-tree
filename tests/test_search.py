@@ -36,7 +36,6 @@ def _make_expander(**overrides):
 
         mock_config = MagicMock()
         mock_config.search.score_acceptance_threshold = 0.9
-        from shallowtree.interfaces.full_tree_search import Expander
         exp = Expander(mock_config)
 
         # Apply overrides
@@ -323,7 +322,6 @@ class TestBestRoute(unittest.TestCase):
         H). _matches_context_scaffold must recognise that via the stripped
         scaffold so best_route does not warn on it."""
         from rdkit import Chem
-        from shallowtree.interfaces.full_tree_search import Expander
 
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
@@ -346,7 +344,6 @@ class TestBestRoute(unittest.TestCase):
     def test_scaffold_wildcard_info_only_for_single_leaf_wildcard(self):
         """The relaxed boundary check applies only when the scaffold has
         exactly one wildcard atom and it's a leaf (degree 1)."""
-        from shallowtree.interfaces.full_tree_search import Expander
 
         # Single leaf wildcard — the relaxation applies.
         q = Expander._parse_scaffold_query("[*]Oc1ccccc1")
@@ -490,7 +487,6 @@ class TestBestRoute(unittest.TestCase):
         aromatic-lowercase scaffolds do, since MolFromSmarts takes bond orders
         literally while MolFromSmiles perceives aromaticity on the target."""
         from rdkit import Chem
-        from shallowtree.interfaces.full_tree_search import Expander
 
         smi = ('CC1N=CSC=1C1C=C(OCC2C=CC(CN3CCN(C4C=C(C5C=CC=CC=5O)N=NC=4N)CC3)'
                '=CC=2)C(CNC(=O)[C@H]2N(C(=O)[C@@H](NC(=O)C3(F)CC3)C(C)(C)C)'
