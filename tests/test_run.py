@@ -11,7 +11,6 @@ class TestStandardRuns(unittest.TestCase):
 
     CONFIG_PATH = str(REPO_ROOT / "application_config/config.json")
     SCAFFOLD = "[*]c1n[nH]c2cc(-c3ccccc3)ccc12"
-    DEPTH = 2
 
     def setUp(self):
         self.smiles = [
@@ -28,11 +27,11 @@ class TestStandardRuns(unittest.TestCase):
         self.expander = TreeSearch(input_config)
 
     def test_context_search(self):
-        df = self.expander.search(self.smiles, max_depth=self.DEPTH)
+        df = self.expander.search(self.smiles)
         df = df.drop(columns=['route'])
         print(df.head())
 
     def test_search_tree(self):
-        df = self.expander.search(self.smiles, max_depth=self.DEPTH)
+        df = self.expander.search(self.smiles)
         df = df.drop(columns=['route'])
         print(df.head())

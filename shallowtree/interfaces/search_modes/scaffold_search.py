@@ -11,9 +11,8 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class ScaffoldSearch(BaseTreeSearch):
 
-    def search(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
+    def search(self, smiles: List[str]) -> pd.DataFrame:
         scaffold_str = self._input_config.scaffold
-        self.max_depth = max_depth
         rows = []
         context_scaffold = self._parse_scaffold_query(scaffold_str)
         # Scaffold-matching reactants are intentional terminal nodes here and
@@ -46,7 +45,7 @@ class ScaffoldSearch(BaseTreeSearch):
         # search of the same molecule as its own target). Forcing tup=None here
         # routes such boundary nodes into the leaf branch so they get stock-
         # checked, warned, and recorded in BBs instead of being silently dropped.
-        tup = None if depth > self.max_depth else self.solved.get(mol.inchi_key)
+        tup = None if depth > self._input_config.depth else self.solved.get(mol.inchi_key)
         if tup is None:
             if mol not in self.stock and not self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped):
                 self._logger.warning(

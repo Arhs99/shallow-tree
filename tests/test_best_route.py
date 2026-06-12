@@ -17,7 +17,7 @@ class TestBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         reactant1 = TreeMolecule(parent=mol, smiles="c1ccccc1")
@@ -33,7 +33,7 @@ class TestBestRoute(unittest.TestCase):
 
     def test_unsolved_mol_becomes_bb(self):
         exp = _make_search()
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
@@ -49,7 +49,7 @@ class TestBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
 
         mol = TreeMolecule(parent=None, smiles="CCO")
@@ -65,7 +65,7 @@ class TestBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
 
         mol = TreeMolecule(parent=None, smiles="CCO")
@@ -95,7 +95,7 @@ class TestBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(stock=stock)
-        exp.max_depth = 1
+        exp._input_config.depth = 1
         root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
 
         tree = defaultdict(list)
@@ -114,7 +114,7 @@ class TestBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
-        exp.max_depth = 1
+        exp._input_config.depth = 1
         root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
 
         tree = defaultdict(list)

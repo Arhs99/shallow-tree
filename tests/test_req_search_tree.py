@@ -31,7 +31,7 @@ class TestReqSearchTree(unittest.TestCase):
 
     def test_depth_exceeds_max_returns_0(self):
         exp = _make_search()
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         mol = TreeMolecule(parent=None, smiles="CCO")
         score = exp.req_search_tree(mol, depth=3)
         self.assertEqual(score, 0.0)
@@ -58,7 +58,7 @@ class TestReqSearchTree(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         action = _make_action(["c1ccccc1", "CO"], policy_name="rules")
@@ -79,7 +79,7 @@ class TestReqSearchTree(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(side_effect=lambda m: m.inchi_key in stock_inchis)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         action = MagicMock()
         action.reactants = ((reactant1, reactant2),)
@@ -96,7 +96,7 @@ class TestReqSearchTree(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         action = _make_action(["c1ccccc1", "CO"], policy_name="ml_policy")
@@ -117,7 +117,7 @@ class TestReqSearchTree(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         action = _make_action(["c1ccccc1", "CO"], policy_name="rules")

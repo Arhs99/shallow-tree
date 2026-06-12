@@ -43,13 +43,12 @@ class BaseTreeSearch(abc.ABC):
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
         self.rules_expansion = self._setup_rules_expansion(app_config)
-        self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
         self.BBs = []
 
     def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
-        if depth > self.max_depth:
+        if depth > self._input_config.depth:
             return 0.0
 
         if mol.inchi_key in self.cache:
@@ -87,6 +86,10 @@ class BaseTreeSearch(abc.ABC):
 
         self._update_cache(mol, depth, score)
         return score
+
+    @abstractmethod
+    def search(self, *args, **kwargs) -> List:
+        pass
 
     @abstractmethod
     def best_route(self, *args, **kwargs):

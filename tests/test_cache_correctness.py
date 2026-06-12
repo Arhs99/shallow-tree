@@ -30,7 +30,7 @@ class TestCacheCorrectness(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(side_effect=lambda m: m.inchi_key in stock_inchis)
         exp = _make_search(stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
 
         action = MagicMock()
         action.reactants = ((reactant1, reactant2),)

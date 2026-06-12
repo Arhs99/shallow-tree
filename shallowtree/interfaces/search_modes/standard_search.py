@@ -13,8 +13,7 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class StandardSearch(BaseTreeSearch):
 
-    def search(self, smiles: List[str], max_depth=2) -> pd.DataFrame:
-        self.max_depth = max_depth
+    def search(self, smiles: List[str]) -> pd.DataFrame:
         rows = []
         for smi in smiles:
             solution = defaultdict(list)
@@ -34,7 +33,7 @@ class StandardSearch(BaseTreeSearch):
         # search of the same molecule as its own target). Forcing tup=None here
         # routes such boundary nodes into the leaf branch so they get stock-
         # checked, warned, and recorded in BBs instead of being silently dropped.
-        tup = None if depth > self.max_depth else self.solved.get(mol.inchi_key)
+        tup = None if depth > self._input_config.depth else self.solved.get(mol.inchi_key)
         if tup is None:
             if mol not in self.stock:
                 self._logger.warning(

@@ -21,7 +21,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(ScaffoldSearch, stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
         context_scaffold = Chem.MolFromSmarts("CCO")
 
@@ -40,7 +40,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(ScaffoldSearch, stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
 
         scaffold = ScaffoldSearch._parse_scaffold_query("[*]Oc1ccccc1")
@@ -102,7 +102,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -133,7 +134,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertEqual(df.iloc[0]['score'], 0.0)
         self.assertNotIn(parent.inchi_key, exp.solved)
 
@@ -162,7 +164,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -191,7 +194,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
