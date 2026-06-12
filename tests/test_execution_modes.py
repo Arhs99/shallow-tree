@@ -1,3 +1,5 @@
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -7,11 +9,23 @@ from shallowtree.context.config import Configuration
 from shallowtree.interfaces.execution_modes import parallel_search, sequential_search
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_PATH = REPO_ROOT / "application_config/config.json"
 
 
 class TestExecutionModes(unittest.TestCase):
 
     def setUp(self):
+        # Disable the Redis cache via a temp config copy (config.json untouched)
+        # so the tests need no running Redis and don't leak solved-route state
+        # between searches.
+        config = json.loads(CONFIG_PATH.read_text())
+        config.setdefault("cache", {})["enabled"] = False
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        json.dump(config, tmp)
+        tmp.close()
+        self.addCleanup(lambda: Path(tmp.name).unlink(missing_ok=True))
+        config_path = tmp.name
+
         smiles = [
             "Clc1ccccc1COC5CC(Nc3n[nH]c4cc(c2ccccc2)ccc34)C5",
             "CC(c2c[nH]c3cc(c1ccccc1)ccc23)C5CC(OCc4ccccc4Cl)C5",
@@ -19,10 +33,10 @@ class TestExecutionModes(unittest.TestCase):
             "CC(C)(C)c1cc2c(N/N=C\\c3cccc(CN)n3)ncnc2s1",
             "COc1cccc2c1c(Cl)c1c3c(cc(O)c(O)c32)C(=O)N1",
         ]
-        self.standard_config = InputConfiguration(app_configuration_path=str(REPO_ROOT / "application_config/config.json"),
+        self.standard_config = InputConfiguration(app_configuration_path=config_path,
                                          scaffold=None,
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3)
-        self.scaffold_config = InputConfiguration(app_configuration_path=str(REPO_ROOT / "application_config/config.json"),
+        self.scaffold_config = InputConfiguration(app_configuration_path=config_path,
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3)
 

@@ -56,9 +56,9 @@ def parallel_search(input_config: InputConfiguration):
 
     def parallel_run(input_c: InputConfiguration):
         stock = _build_worker_stock(shm_name, shm_count)
-        input_config.prebuilt_stock = stock
+        input_c.prebuilt_stock = stock
 
-        search = TreeSearch(input_config)
+        search = TreeSearch(input_c)
         df = search.search(input_c.smiles,  max_depth=input_c.depth)
 
         if not input_c.routes:

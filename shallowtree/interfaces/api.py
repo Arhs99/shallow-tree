@@ -28,11 +28,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
-from shallowtree.configs.application_configuration import ApplicationConfiguration
-from shallowtree.context.config import Configuration
+from shallowtree.configs.input_configuration import InputConfiguration
+from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
+from shallowtree.interfaces.search_modes.tree_search import TreeSearch
 
-# Module-level singleton (one per uvicorn worker process)
-_expander: Optional[Expander] = None
+# Module-level singletons (one set per uvicorn worker process). The heavy
+# state (policies, stock, redis) lives on the search instance, so we build at
+# most one per mode and reuse it — keeping the branch cache warm across calls.
+_config_path: Optional[str] = None
+_searches: dict = {}  # "standard" | "scaffold" -> BaseTreeSearch
 
 # API key: set SHALLOWTREE_API_KEY to enable authentication.
 # If unset, no auth is required (local-only use).
@@ -59,18 +63,34 @@ class SearchResponse(BaseModel):
     metadata: dict
 
 
+def _get_search(scaffold: Optional[str]) -> BaseTreeSearch:
+    """Return a search instance for the requested mode, building it on first
+    use. Scaffold is read fresh from the config on every search() call, so a
+    cached ScaffoldSearch can serve any scaffold string."""
+    mode = "scaffold" if scaffold else "standard"
+    search = _searches.get(mode)
+    if search is None:
+        input_config = InputConfiguration(
+            app_configuration_path=_config_path,
+            output_path="",
+            scaffold=scaffold,
+        )
+        search = TreeSearch(input_config)
+        _searches[mode] = search
+    else:
+        search._input_config.scaffold = scaffold
+    return search
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _expander
-    config_path = os.environ.get("SHALLOWTREE_CONFIG", "config.json")
-    config_dict = Configuration.from_json(config_path)
-    app_config = ApplicationConfiguration(**config_dict)
-    _expander = Expander(app_config)
-    _expander.expansion_policy.select_first()
-    _expander.filter_policy.select_first()
-    _expander.stock.select_first()
+    global _config_path
+    _config_path = os.environ.get("SHALLOWTREE_CONFIG", "config.json")
+    # Warm the standard-mode singleton so /health is meaningful and the first
+    # request doesn't pay model-load latency.
+    _get_search(None)
     yield
-    _expander = None
+    _searches.clear()
 
 
 app = FastAPI(
@@ -92,15 +112,15 @@ async def check_api_key(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    if _expander is None:
-        raise HTTPException(status_code=503, detail="Expander not loaded")
+    if "standard" not in _searches:
+        raise HTTPException(status_code=503, detail="Search engine not loaded")
     return {"status": "ok"}
 
 
 @app.post("/search", response_model=SearchResponse)
 def search(req: SearchRequest):
-    if _expander is None:
-        raise HTTPException(status_code=503, detail="Expander not loaded")
+    if _config_path is None:
+        raise HTTPException(status_code=503, detail="Search engine not loaded")
 
     # Validate and canonicalize SMILES
     valid_smiles = []
@@ -117,10 +137,8 @@ def search(req: SearchRequest):
 
     t0 = time.monotonic()
 
-    if req.scaffold is not None:
-        df = _expander.context_search(valid_smiles, req.scaffold, max_depth=req.depth)
-    else:
-        df = _expander.search_tree(valid_smiles, max_depth=req.depth)
+    search_engine = _get_search(req.scaffold)
+    df = search_engine.search(valid_smiles, max_depth=req.depth)
 
     elapsed = time.monotonic() - t0
 
