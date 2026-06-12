@@ -8,3 +8,4 @@ class CacheConfiguration(BaseModel):
     db: int = 0
     password: str|None = None
     socket_timeout: float = 5.0
+    namespace: str = 'standard'

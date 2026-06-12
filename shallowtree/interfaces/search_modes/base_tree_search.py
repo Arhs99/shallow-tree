@@ -1,4 +1,5 @@
 import abc
+import hashlib
 from abc import abstractmethod
 from pathlib import Path
 from typing import List
@@ -179,6 +180,10 @@ class BaseTreeSearch(abc.ABC):
 
     def _setup_redis_cache(self, cache_config: CacheConfiguration):
         if cache_config.enabled:
+            scaffold = self._input_config.scaffold
+            if scaffold:
+                scaffold_hash = hashlib.sha256(scaffold.strip().encode()).hexdigest()[:16]
+                cache_config.namespace = f"scaffold:{scaffold_hash}"
             redis_cache = RedisCache(
                 host=cache_config.host,
                 port=cache_config.port,
@@ -187,7 +192,8 @@ class BaseTreeSearch(abc.ABC):
                 socket_timeout=cache_config.socket_timeout,
                 filter_policy=self.filter_policy,
                 expansion_policy=self.expansion_policy,
-                stock=self.stock
+                stock=self.stock,
+                namespace= cache_config.namespace,
             )
             return redis_cache
         else:

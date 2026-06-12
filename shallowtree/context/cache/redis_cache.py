@@ -32,6 +32,7 @@ class RedisCache:
         db: int = 0,
         password: Optional[str] = None,
         socket_timeout: float = 5.0,
+        namespace: str = "standard",
     ) -> None:
         """Initialize Redis connection with fail-fast behavior.
 
@@ -54,6 +55,7 @@ class RedisCache:
             )
 
         self._config_hash = self._compute_config_hash(filter_policy, expansion_policy, stock)
+        self._namespace = namespace
 
         try:
             self._client = redis.Redis(
@@ -108,7 +110,7 @@ class RedisCache:
         Returns:
             Formatted Redis key string.
         """
-        return f"shallowtree:{self._config_hash}:{key_type}:{inchi_key}"
+        return f"shallowtree:{self._config_hash}:{self._namespace}:{key_type}:{inchi_key}"
 
     def get_cache(self, inchi_key: str) -> Optional[Tuple[int, float]]:
         """Get cached depth and score for a molecule.
