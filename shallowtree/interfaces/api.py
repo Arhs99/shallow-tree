@@ -138,7 +138,8 @@ def search(req: SearchRequest):
     t0 = time.monotonic()
 
     search_engine = _get_search(req.scaffold)
-    df = search_engine.search(valid_smiles, max_depth=req.depth)
+    search_engine._input_config.depth = req.depth
+    df = search_engine.search(valid_smiles)
 
     elapsed = time.monotonic() - t0
 

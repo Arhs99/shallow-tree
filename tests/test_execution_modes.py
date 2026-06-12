@@ -15,9 +15,10 @@ CONFIG_PATH = REPO_ROOT / "application_config/config.json"
 class TestExecutionModes(unittest.TestCase):
 
     def setUp(self):
-        # Disable the Redis cache via a temp config copy (config.json untouched)
-        # so the tests need no running Redis and don't leak solved-route state
-        # between searches.
+        # Enable the Redis cache via a temp config copy (config.json untouched)
+        # to exercise the namespaced cache: the key embeds the search mode +
+        # scaffold, so standard and scaffold results no longer collide. Requires
+        # a running Redis.
         config = json.loads(CONFIG_PATH.read_text())
         config.setdefault("cache", {})["enabled"] = True
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
