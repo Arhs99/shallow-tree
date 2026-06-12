@@ -21,16 +21,16 @@ class TestScaffoldBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(ScaffoldSearch, stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
         context_scaffold = Chem.MolFromSmarts("CCO")
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree, context_scaffold=context_scaffold)
-        self.assertIn("CCO", exp.BBs)
+            exp.best_route(mol, 0, tree, building_blocks, context_scaffold=context_scaffold)
+        self.assertIn("CCO", building_blocks)
 
     def test_best_route_silent_for_relaxed_context_scaffold_mol(self):
         """The relaxed boundary check makes the scaffold-side reactant of a
@@ -40,7 +40,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=False)
         exp = _make_search(ScaffoldSearch, stock=stock)
-        exp.max_depth = 2
+        exp._input_config.depth = 2
         exp.solved = {}
 
         scaffold = ScaffoldSearch._parse_scaffold_query("[*]Oc1ccccc1")
@@ -49,10 +49,10 @@ class TestScaffoldBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="Oc1ccccc1")  # phenol
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree, scaffold, stripped)
-        self.assertIn("Oc1ccccc1", exp.BBs)
+            exp.best_route(mol, 0, tree, building_blocks, scaffold, stripped)
+        self.assertIn("Oc1ccccc1", building_blocks)
 
     def test_scaffold_wildcard_info_only_for_single_leaf_wildcard(self):
         """The relaxed boundary check applies only when the scaffold has
@@ -102,7 +102,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -133,7 +134,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertEqual(df.iloc[0]['score'], 0.0)
         self.assertNotIn(parent.inchi_key, exp.solved)
 
@@ -162,7 +164,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -191,7 +194,8 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        df = exp.search([smi], max_depth=1)
+        exp._input_config.depth = 1
+        df = exp.search([smi])
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 

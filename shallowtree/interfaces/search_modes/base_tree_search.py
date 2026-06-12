@@ -38,22 +38,16 @@ class BaseTreeSearch(abc.ABC):
         self.filter_policy = self._setup_filter_policy(app_config.filter)
         self.expansion_policy = self._setup_expansion_policy(app_config.expansion)
 
-        self.stock = self._setup_stock(app_config.stock) if self._input_config.prebuilt_stock is None \
-            else self._input_config.prebuilt_stock
+        self.stock = self._setup_stock(app_config.stock)
 
         self.redis_cache = self._setup_redis_cache(app_config.cache)
 
         self.rules_expansion = self._setup_rules_expansion(app_config)
-        self.max_depth = 2
         self.cache = dict()
         self.solved = dict()
-        self.BBs = []
-        self.expansion_policy.select_first()
-        self.filter_policy.select_first()
-        self.stock.select_first()
 
     def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
-        if depth > self.max_depth:
+        if depth > self._input_config.depth:
             return 0.0
 
         if mol.inchi_key in self.cache:
@@ -91,6 +85,10 @@ class BaseTreeSearch(abc.ABC):
 
         self._update_cache(mol, depth, score)
         return score
+
+    @abstractmethod
+    def search(self, *args, **kwargs) -> List:
+        pass
 
     @abstractmethod
     def best_route(self, *args, **kwargs):
@@ -185,25 +183,24 @@ class BaseTreeSearch(abc.ABC):
                 scaffold_hash = hashlib.sha256(scaffold.strip().encode()).hexdigest()[:16]
                 cache_config.namespace = f"scaffold:{scaffold_hash}"
             redis_cache = RedisCache(
-                host=cache_config.host,
-                port=cache_config.port,
-                db=cache_config.db,
-                password=cache_config.password,
-                socket_timeout=cache_config.socket_timeout,
                 filter_policy=self.filter_policy,
                 expansion_policy=self.expansion_policy,
                 stock=self.stock,
-                namespace= cache_config.namespace,
+                cache_config=cache_config
             )
             return redis_cache
         else:
             return None
 
-    def _setup_stock(self, stock_configs: List[StockConfiguration]):
-        stock = Stock(stock_configs)
+    def _setup_stock(self, stock_configs: List[StockConfiguration]) -> Stock:
+        if self._input_config.prebuilt_stock is None:
+            stock = Stock(stock_configs)
+        else:
+            stock = self._input_config.prebuilt_stock
+            stock.select_first()
         return stock
 
-    def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]):
+    def _setup_expansion_policy(self, expansion_configs: List[ExpansionConfiguration]) -> ExpansionPolicy:
         strategies = []
         for expansion_config in expansion_configs:#TODO: logic below should be handled by a factory
             expansion_strategy = TemplateBasedExpansionStrategy(expansion_config.configuration_name, expansion_config, self._intern_cache)
@@ -211,7 +208,7 @@ class BaseTreeSearch(abc.ABC):
         expansion_policy = ExpansionPolicy(strategies)
         return expansion_policy
 
-    def _setup_filter_policy(self, filter_configs: List[FilterConfiguration]):
+    def _setup_filter_policy(self, filter_configs: List[FilterConfiguration]) -> FilterPolicy:
         strategies = []
         for filter_config in filter_configs:#TODO: logic below should be handled by a factory
             filter_strategy = QuickKerasFilter(filter_config.filter_name, filter_config)

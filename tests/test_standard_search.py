@@ -16,7 +16,8 @@ class TestSearch(unittest.TestCase):
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
 
-        df = exp.search(["CCO"], max_depth=2)
+        exp._input_config.depth = 2
+        df = exp.search(["CCO"])
         self.assertIn("SMILES", df.columns)
         self.assertIn("score", df.columns)
         self.assertIn("route", df.columns)
@@ -27,7 +28,8 @@ class TestSearch(unittest.TestCase):
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
 
-        df = exp.search(["CCO", "CCCO"], max_depth=2)
+        exp._input_config.depth = 2
+        df = exp.search(["CCO", "CCCO"])
         self.assertEqual(len(df), 2)
 
     def test_works_with_no_redis_cache(self):
@@ -36,7 +38,8 @@ class TestSearch(unittest.TestCase):
         exp = _make_search(stock=stock)
         exp.redis_cache = None
 
-        df = exp.search(["CCO"], max_depth=2)
+        exp._input_config.depth = 2
+        df = exp.search(["CCO"])
         self.assertEqual(len(df), 1)
 
 

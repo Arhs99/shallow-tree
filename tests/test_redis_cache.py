@@ -27,13 +27,23 @@ class MockTreeMolecule:
 
 
 def _mock_policies():
-    """Create mock filter_policy, expansion_policy, stock."""
+    """Create mock filter_policy, expansion_policy, stock.
+
+    Each policy exposes the collection API used by _compute_config_hash:
+    `items` (the key names) and `get_item(name)` (the strategy), both backed
+    by the `_items` dict so tests can mutate a strategy in place.
+    """
     expansion_policy = MagicMock()
     expansion_policy._items = {"full": MagicMock(cutoff_number=50)}
+    expansion_policy.items = list(expansion_policy._items.keys())
+    expansion_policy.get_item = lambda name: expansion_policy._items[name]
     filter_policy = MagicMock()
     filter_policy._items = {"all": MagicMock(filter_cutoff=0.05)}
+    filter_policy.items = list(filter_policy._items.keys())
+    filter_policy.get_item = lambda name: filter_policy._items[name]
     stock = MagicMock()
     stock._items = {"zinc": MagicMock()}
+    stock.items = list(stock._items.keys())
     return filter_policy, expansion_policy, stock
 
 
@@ -41,17 +51,20 @@ def _create_cache(fake_redis_client, filter_policy=None, expansion_policy=None, 
                   namespace=None):
     """Create a RedisCache with a fakeredis backend."""
     from shallowtree.context.cache.redis_cache import RedisCache
+    from shallowtree.configs.cache_configuration import CacheConfiguration
 
     if filter_policy is None:
         filter_policy, expansion_policy, stock = _mock_policies()
 
-    kwargs = {} if namespace is None else {"namespace": namespace}
+    cache_config = CacheConfiguration()
+    if namespace is not None:
+        cache_config.namespace = namespace
     with patch("redis.Redis", return_value=fake_redis_client):
         cache = RedisCache(
             filter_policy=filter_policy,
             expansion_policy=expansion_policy,
             stock=stock,
-            **kwargs,
+            cache_config=cache_config,
         )
     return cache
 
@@ -188,6 +201,7 @@ class TestConnectionErrors(unittest.TestCase):
         import redis as redis_module
         from shallowtree.utils.exceptions import CacheException
         from shallowtree.context.cache.redis_cache import RedisCache
+        from shallowtree.configs.cache_configuration import CacheConfiguration
 
         mock_client = MagicMock()
         mock_client.ping.side_effect = redis_module.ConnectionError("Connection refused")
@@ -195,7 +209,8 @@ class TestConnectionErrors(unittest.TestCase):
         fp, ep, st = _mock_policies()
         with patch("redis.Redis", return_value=mock_client):
             with self.assertRaises(CacheException):
-                RedisCache(filter_policy=fp, expansion_policy=ep, stock=st)
+                RedisCache(filter_policy=fp, expansion_policy=ep, stock=st,
+                           cache_config=CacheConfiguration())
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
