@@ -183,9 +183,7 @@ class BaseTreeSearch(abc.ABC):
             scaffold = self._input_config.scaffold
             if scaffold:
                 scaffold_hash = hashlib.sha256(scaffold.strip().encode()).hexdigest()[:16]
-                namespace = f"scaffold:{scaffold_hash}"
-            else:
-                namespace = "standard"
+                cache_config.namespace = f"scaffold:{scaffold_hash}"
             redis_cache = RedisCache(
                 host=cache_config.host,
                 port=cache_config.port,
@@ -195,7 +193,7 @@ class BaseTreeSearch(abc.ABC):
                 filter_policy=self.filter_policy,
                 expansion_policy=self.expansion_policy,
                 stock=self.stock,
-                namespace=namespace,
+                namespace= cache_config.namespace,
             )
             return redis_cache
         else:
