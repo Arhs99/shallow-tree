@@ -25,11 +25,11 @@ class TestBestRoute(unittest.TestCase):
         exp.solved[mol.inchi_key] = ((reactant1, reactant2), 1.0, "test")
 
         tree = defaultdict(list)
-        exp.BBs = []
-        exp.best_route(mol, 0, tree)
+        building_blocks = []
+        exp.best_route(mol, 0, tree, building_blocks)
 
         self.assertIn(1, tree)
-        self.assertEqual(len(exp.BBs), 2)
+        self.assertEqual(len(building_blocks), 2)
 
     def test_unsolved_mol_becomes_bb(self):
         exp = _make_search()
@@ -37,10 +37,10 @@ class TestBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
-        exp.BBs = []
-        exp.best_route(mol, 0, tree)
+        building_blocks = []
+        exp.best_route(mol, 0, tree, building_blocks)
 
-        self.assertIn("CCO", exp.BBs)
+        self.assertIn("CCO", building_blocks)
         self.assertEqual(len(tree), 0)
 
     def test_best_route_warns_when_solved_missing_for_non_stock_mol(self):
@@ -54,11 +54,11 @@ class TestBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertLogs(exp._logger, level="WARNING") as cm:
-            exp.best_route(mol, 0, tree)
+            exp.best_route(mol, 0, tree, building_blocks)
         self.assertTrue(any("route truncated" in m for m in cm.output))
-        self.assertIn("CCO", exp.BBs)
+        self.assertIn("CCO", building_blocks)
 
     def test_best_route_silent_for_stock_mol(self):
         """The normal stock-termination path stays silent (no warning)."""
@@ -70,10 +70,10 @@ class TestBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree)
-        self.assertIn("CCO", exp.BBs)
+            exp.best_route(mol, 0, tree, building_blocks)
+        self.assertIn("CCO", building_blocks)
 
     def _make_boundary_solved(self, exp):
         """Build a solved chain root->mid->leaf->deep with the leaf reached at
@@ -99,13 +99,13 @@ class TestBestRoute(unittest.TestCase):
         root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
 
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertLogs(exp._logger, level="WARNING") as cm:
-            exp.best_route(root, 0, tree)
+            exp.best_route(root, 0, tree, building_blocks)
 
         self.assertTrue(any("route truncated" in m for m in cm.output))
-        self.assertIn(leaf_smiles, exp.BBs)       # boundary leaf recorded
-        self.assertNotIn(deep_smiles, exp.BBs)    # not expanded past the limit
+        self.assertIn(leaf_smiles, building_blocks)       # boundary leaf recorded
+        self.assertNotIn(deep_smiles, building_blocks)    # not expanded past the limit
         self.assertNotIn(3, tree)                 # no depth-3 reaction emitted
         self.assertIn(2, tree)                    # mid => leaf still emitted
 
@@ -118,12 +118,12 @@ class TestBestRoute(unittest.TestCase):
         root, leaf_smiles, deep_smiles = self._make_boundary_solved(exp)
 
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(root, 0, tree)
+            exp.best_route(root, 0, tree, building_blocks)
 
-        self.assertIn(leaf_smiles, exp.BBs)
-        self.assertNotIn(deep_smiles, exp.BBs)
+        self.assertIn(leaf_smiles, building_blocks)
+        self.assertNotIn(deep_smiles, building_blocks)
         self.assertNotIn(3, tree)
 
 

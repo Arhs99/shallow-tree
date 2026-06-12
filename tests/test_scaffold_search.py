@@ -27,10 +27,10 @@ class TestScaffoldBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="CCO")
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree, context_scaffold=context_scaffold)
-        self.assertIn("CCO", exp.BBs)
+            exp.best_route(mol, 0, tree, building_blocks, context_scaffold=context_scaffold)
+        self.assertIn("CCO", building_blocks)
 
     def test_best_route_silent_for_relaxed_context_scaffold_mol(self):
         """The relaxed boundary check makes the scaffold-side reactant of a
@@ -49,10 +49,10 @@ class TestScaffoldBestRoute(unittest.TestCase):
 
         mol = TreeMolecule(parent=None, smiles="Oc1ccccc1")  # phenol
         tree = defaultdict(list)
-        exp.BBs = []
+        building_blocks = []
         with self.assertNoLogs(exp._logger, level="WARNING"):
-            exp.best_route(mol, 0, tree, scaffold, stripped)
-        self.assertIn("Oc1ccccc1", exp.BBs)
+            exp.best_route(mol, 0, tree, building_blocks, scaffold, stripped)
+        self.assertIn("Oc1ccccc1", building_blocks)
 
     def test_scaffold_wildcard_info_only_for_single_leaf_wildcard(self):
         """The relaxed boundary check applies only when the scaffold has

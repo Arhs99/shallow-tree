@@ -45,7 +45,6 @@ class BaseTreeSearch(abc.ABC):
         self.rules_expansion = self._setup_rules_expansion(app_config)
         self.cache = dict()
         self.solved = dict()
-        self.BBs = []
 
     def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
         if depth > self._input_config.depth:

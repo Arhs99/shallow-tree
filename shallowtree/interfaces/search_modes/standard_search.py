@@ -18,16 +18,16 @@ class StandardSearch(BaseTreeSearch):
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            self.BBs = []
+            building_blocks = []
 
             self._load_from_redis(mol)
             score = self.req_search_tree(mol, depth=0)
-            rows = self._update(mol, smi, score, solution, rows)
+            rows = self._update(mol, smi, score, solution, rows, building_blocks)
 
         df = pd.DataFrame(rows)
         return df
 
-    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict):
+    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, building_blocks: List):
         # Past the depth limit a node is a route leaf — never expand it further,
         # even if it is in self.solved (that knowledge came from a shallower
         # search of the same molecule as its own target). Forcing tup=None here
@@ -39,18 +39,18 @@ class StandardSearch(BaseTreeSearch):
                 self._logger.warning(
                     f"best_route: {mol.smiles} is a route leaf but not in stock — "
                     "route truncated (depth boundary or cache/solved invariant)")
-            self.BBs.append(mol.smiles)
+            building_blocks.append(mol.smiles)
             return
         rxn, score, clas = tup
         reactants = '.'.join([m.smiles for m in rxn])
         tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
         for x in rxn:
-            self.best_route(x, depth + 1, tree)
+            self.best_route(x, depth + 1, tree, building_blocks)
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List) -> List:
+    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List, building_blocks: List) -> List:
         if score > self.app_config.search.score_acceptance_threshold:
-            self.best_route(mol, 0, tree)
+            self.best_route(mol, 0, tree, building_blocks)
             self._save_to_redis()  # Persist to Redis if available and successful
-        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
+        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': building_blocks})
         return rows
 

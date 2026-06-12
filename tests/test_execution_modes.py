@@ -19,7 +19,7 @@ class TestExecutionModes(unittest.TestCase):
         # so the tests need no running Redis and don't leak solved-route state
         # between searches.
         config = json.loads(CONFIG_PATH.read_text())
-        config.setdefault("cache", {})["enabled"] = False
+        config.setdefault("cache", {})["enabled"] = True
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         json.dump(config, tmp)
         tmp.close()

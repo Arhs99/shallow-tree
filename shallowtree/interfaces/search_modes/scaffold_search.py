@@ -28,18 +28,18 @@ class ScaffoldSearch(BaseTreeSearch):
         for smi in smiles:
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
-            self.BBs = []
+            building_blocks = []
 
             # Pre-populate from Redis if available
             self._load_from_redis(mol)
             feasible_actions = self._determine_feasible_actions(mol)
             score = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
-            rows = self._update(mol, smi, score, solution, rows, context_scaffold, context_scaffold_stripped)
+            rows = self._update(mol, smi, score, solution, rows, building_blocks, context_scaffold, context_scaffold_stripped)
         df = pd.DataFrame(rows)
         return df
 
-    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, context_scaffold: Mol = None,
-                   context_scaffold_stripped: Mol = None):
+    def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, building_blocks: List,
+                   context_scaffold: Mol = None, context_scaffold_stripped: Mol = None):
         # Past the depth limit a node is a route leaf — never expand it further,
         # even if it is in self.solved (that knowledge came from a shallower
         # search of the same molecule as its own target). Forcing tup=None here
@@ -51,13 +51,13 @@ class ScaffoldSearch(BaseTreeSearch):
                 self._logger.warning(
                     f"best_route: {mol.smiles} is a route leaf but not in stock — "
                     "route truncated (depth boundary or cache/solved invariant)")
-            self.BBs.append(mol.smiles)
+            building_blocks.append(mol.smiles)
             return
         rxn, score, clas = tup
         reactants = '.'.join([m.smiles for m in rxn])
         tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
         for x in rxn:
-            self.best_route(x, depth + 1, tree, context_scaffold, context_scaffold_stripped)
+            self.best_route(x, depth + 1, tree, building_blocks, context_scaffold, context_scaffold_stripped)
 
     @staticmethod
     def _parse_scaffold_query(scaffold_str: str):
@@ -158,12 +158,12 @@ class ScaffoldSearch(BaseTreeSearch):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
         return score
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List,
+    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List, building_blocks: List,
                 context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
         if score > self.app_config.search.score_acceptance_threshold:
-            self.best_route(mol, 0, tree, context_scaffold, context_scaffold_stripped)
+            self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
             self._save_to_redis()  # Persist to Redis if available and successful
-        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': self.BBs})
+        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': building_blocks})
         return rows
 
     def _matches_context_scaffold(self, mol: TreeMolecule, context_scaffold: Mol, context_scaffold_stripped: Mol) -> bool:

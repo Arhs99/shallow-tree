@@ -59,7 +59,7 @@ def parallel_search(input_config: InputConfiguration):
         input_c.prebuilt_stock = stock
 
         search = TreeSearch(input_c)
-        df = search.search(input_c.smiles,  max_depth=input_c.depth)
+        df = search.search(input_c.smiles)
 
         if not input_c.routes:
             df = df.drop(columns=['route'])
@@ -84,7 +84,7 @@ def sequential_search(input_config: InputConfiguration):
     input_config.prebuilt_stock = stock
 
     search = TreeSearch(input_config)
-    df = search.search(input_config.smiles, max_depth=input_config.depth)
+    df = search.search(input_config.smiles)
 
     if not input_config.routes:
         df = df.drop(columns=['route'])
