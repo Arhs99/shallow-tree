@@ -56,6 +56,9 @@ class ContextCollection(abc.ABC):
         """The available item keys"""
         return list(self._items.keys())
 
+    def get_item(self, key: str) -> Any:
+        return self._items[key]
+
     @property
     def selection(self) -> Union[List[str], str, None]:
         """The keys of the selected item(s)"""
