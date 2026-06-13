@@ -7,8 +7,8 @@ from shallowtree.context.expansion_strategies.expansion_strategies import Expans
 from shallowtree.utils.exceptions import PolicyException
 
 if TYPE_CHECKING:
-    from shallowtree.chem.mol import TreeMolecule
-    from shallowtree.chem.reaction import RetroReaction
+    from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+    from shallowtree.chem.reactions.retro_reaction import RetroReaction
 
 
 class ExpansionPolicy(ContextCollection):
@@ -22,8 +22,11 @@ class ExpansionPolicy(ContextCollection):
 
     _collection_name = "expansion policy"
 
-    def __init__(self):
+    def __init__(self, expansion_strategies: List[ExpansionStrategy]):
         super().__init__()
+        for strategy in expansion_strategies:
+            self.load(strategy)
+        self.select_first()
 
     def get_actions(self, molecules: Sequence[TreeMolecule], cache_molecules: Sequence[TreeMolecule] = None, ) \
             -> Tuple[List[RetroReaction], List[float]]:

@@ -7,7 +7,14 @@ import json
 import time
 from typing import TYPE_CHECKING
 
-from shallowtree.chem.mol import TreeMolecule
+from shallowtree.configs.cache_configuration import CacheConfiguration
+
+from shallowtree.context.policy.filter_policy import FilterPolicy
+
+from shallowtree.context.policy.expansion_policy import ExpansionPolicy
+
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+from shallowtree.context.stock.stock import Stock
 from shallowtree.utils.exceptions import CacheException
 
 if TYPE_CHECKING:
@@ -22,27 +29,9 @@ class RedisCache:
     namespace isolation.
     """
 
-    def __init__(
-        self,
-        filter_policy,
-        expansion_policy,
-        stock,
-        host: str = "localhost",
-        port: int = 6379,
-        db: int = 0,
-        password: Optional[str] = None,
-        socket_timeout: float = 5.0,
-    ) -> None:
+    def __init__(self, filter_policy: FilterPolicy, expansion_policy: ExpansionPolicy, stock: Stock,
+                 cache_config: CacheConfiguration) -> None:
         """Initialize Redis connection with fail-fast behavior.
-
-        Args:
-            config: Configuration object for computing config hash.
-            host: Redis server hostname.
-            port: Redis server port.
-            db: Redis database number.
-            password: Optional Redis password.
-            socket_timeout: Connection timeout in seconds.
-
         Raises:
             CacheException: If Redis connection fails.
         """
@@ -54,24 +43,25 @@ class RedisCache:
             )
 
         self._config_hash = self._compute_config_hash(filter_policy, expansion_policy, stock)
+        self._namespace = cache_config.namespace
 
         try:
             self._client = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                password=password,
-                socket_timeout=socket_timeout,
+                host=cache_config.host,
+                port=cache_config.port,
+                db=cache_config.db,
+                password=cache_config.password,
+                socket_timeout=cache_config.socket_timeout,
                 decode_responses=True,
             )
             # Test connection immediately (fail-fast)
             self._client.ping()
         except redis.ConnectionError as e:
-            raise CacheException(f"Failed to connect to Redis at {host}:{port}: {e}")
+            raise CacheException(f"Failed to connect to Redis at {cache_config.host}:{cache_config.port}: {e}")
         except redis.AuthenticationError as e:
             raise CacheException(f"Redis authentication failed: {e}")
 
-    def _compute_config_hash(self, filter_policy, expansion_policy, stock) -> str:
+    def _compute_config_hash(self, filter_policy: FilterPolicy, expansion_policy: ExpansionPolicy, stock) -> str:
         """Compute deterministic hash of config fields that affect search results.
 
         Uses policy/stock key names and relevant settings to create a unique
@@ -81,17 +71,19 @@ class RedisCache:
         hash_data = {}
 
         # Expansion policy - use key names and cutoff settings
-        for name, strategy in expansion_policy._items.items(): #FIXME
+        for name in expansion_policy.items:
             hash_data[f"expansion.{name}"] = name
-            hash_data[f"expansion.{name}.cutoff"] = getattr(strategy, "cutoff_number", 50)
+            strategy = expansion_policy.get_item(name)
+            hash_data[f"expansion.{name}.cutoff"] = strategy.cutoff_number
 
         # Filter policy - use key names and filter cutoff
-        for name, strategy in filter_policy._items.items(): #FIXME
+        for name in filter_policy.items:
             hash_data[f"filter.{name}"] = name
-            hash_data[f"filter.{name}.cutoff"] = getattr(strategy, "filter_cutoff", 0.05)
+            strategy = filter_policy.get_item(name)
+            hash_data[f"filter.{name}.cutoff"] = strategy.filter_cutoff if strategy.filter_cutoff else 0.05
 
         # Stock - use key names
-        for name in stock._items.keys(): #FIXME
+        for name in stock.items:
             hash_data[f"stock.{name}"] = name
 
         # Create deterministic hash
@@ -108,7 +100,7 @@ class RedisCache:
         Returns:
             Formatted Redis key string.
         """
-        return f"shallowtree:{self._config_hash}:{key_type}:{inchi_key}"
+        return f"shallowtree:{self._config_hash}:{self._namespace}:{key_type}:{inchi_key}"
 
     def get_cache(self, inchi_key: str) -> Optional[Tuple[int, float]]:
         """Get cached depth and score for a molecule.

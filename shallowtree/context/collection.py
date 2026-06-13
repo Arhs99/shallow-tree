@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING
+from typing import Dict, List, Any, Union, Optional
 
 from shallowtree.utils.logging import logger
-
-if TYPE_CHECKING:
-    from shallowtree.utils.type_utils import Any, List, Optional, StrDict, Union
 
 
 class ContextCollection(abc.ABC):
@@ -33,7 +30,7 @@ class ContextCollection(abc.ABC):
     _collection_name = "collection"
 
     def __init__(self) -> None:
-        self._items: StrDict = {}
+        self._items: Dict = {}
         self._selection: List[str] = []
         self._logger = logger()
 
@@ -58,6 +55,9 @@ class ContextCollection(abc.ABC):
     def items(self) -> List[str]:
         """The available item keys"""
         return list(self._items.keys())
+
+    def get_item(self, key: str) -> Any:
+        return self._items[key]
 
     @property
     def selection(self) -> Union[List[str], str, None]:

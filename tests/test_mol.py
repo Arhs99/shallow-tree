@@ -4,7 +4,9 @@ import unittest
 import numpy as np
 from rdkit import Chem
 
-from shallowtree.chem.mol import Molecule, TreeMolecule, UniqueMolecule
+from shallowtree.chem.molecules.molecule import Molecule
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+from shallowtree.chem.molecules.unique_molecule import UniqueMolecule
 from shallowtree.utils.exceptions import MoleculeException
 
 

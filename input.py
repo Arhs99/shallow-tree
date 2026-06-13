@@ -23,7 +23,7 @@ from typing import List
 from rdkit import Chem
 
 from shallowtree.configs.input_configuration import InputConfiguration
-from shallowtree.interfaces.parallel import sequential_search, scaffold_search, standard_search
+from shallowtree.interfaces.execution_modes import parallel_search, sequential_search
 
 
 def read_json_file(path: str):
@@ -46,10 +46,7 @@ def main():
     if input_config.parallel_processes ==1:
         df = sequential_search(input_config)
     else:
-        if input_config.scaffold is not None:
-            df = scaffold_search(input_config)
-        else:
-            df = standard_search(input_config)
+        df = parallel_search(input_config)
 
     if not input_config.routes:
         df = df.drop(columns=['route'])

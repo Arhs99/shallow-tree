@@ -5,8 +5,9 @@ from typing import Optional, Dict, Tuple, Sequence, List
 import numpy as np
 import pandas as pd
 
-from shallowtree.chem.mol import TreeMolecule
-from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
+from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.configs.expansion_configuration import ExpansionConfiguration
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 from shallowtree.context.policy.utils import _make_fingerprint
@@ -21,7 +22,6 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
     :ivar template_column: the column in the template file that contains the templates
     :ivar cutoff_cumulative: the accumulative probability of the suggested templates
     :ivar cutoff_number: the maximum number of templates to returned
-    :ivar use_rdchiral: a boolean to apply templates with RDChiral
     :ivar use_remote_models: a boolean to connect to remote TensorFlow servers
     :ivar rescale_prior: a boolean to apply softmax to the priors
     :ivar chiral_fingerprints: if True will base expansion on chiral fingerprint
@@ -36,7 +36,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
         number of templates
     """
 
-    def __init__(self, key: str, config: ExpansionConfiguration) -> None:
+    def __init__(self, key: str, config: ExpansionConfiguration, intern_cache: Optional[Dict] = None) -> None:
         super().__init__(key)
 
         self.template_column: str = config.template_column
@@ -64,6 +64,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
                 f"output dimensions of the model ({self.model.output_size})"
             )
         self._cache: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+        self.intern_cache = intern_cache
 
     def get_actions(
         self,
@@ -103,7 +104,7 @@ class TemplateBasedExpansionStrategy(ExpansionStrategy):
                         mol,
                         smarts=move[self.template_column],
                         metadata=metadata,
-                        use_rdchiral=self.use_rdchiral,
+                        intern_cache=self.intern_cache
                     )
                 )
         return possible_actions, priors  # type: ignore

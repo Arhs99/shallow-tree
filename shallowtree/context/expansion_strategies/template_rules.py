@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from typing import Sequence, Optional, List
+from typing import Sequence, Optional, List, Dict
 
 import pandas as pd
 
-from shallowtree.chem.mol import TreeMolecule
-from shallowtree.chem.reaction import RetroReaction, TemplatedRetroReaction
+from shallowtree.chem.molecules.tree_molecule import TreeMolecule
+from shallowtree.chem.reactions.templated_retro_reaction import TemplatedRetroReaction
+from shallowtree.chem.reactions.retro_reaction import RetroReaction
 from shallowtree.context.expansion_strategies.expansion_strategies import ExpansionStrategy
 
 
 class TemplateRules(ExpansionStrategy):
-    def __init__(self, rules_csv: str):
+    def __init__(self, rules_csv: str, intern_cache: Optional[Dict] = None):
         super().__init__("retro_template")
         self.templates: pd.DataFrame = pd.read_csv(rules_csv, index_col=0, sep="\t")
         self.template_column = "retro_template"
-        self.use_rdchiral = False
+        self.intern_cache = intern_cache
 
     def get_actions(
             self, molecules: Sequence[TreeMolecule], cache_molecules: Optional[Sequence[TreeMolecule]] = None,
@@ -31,6 +32,6 @@ class TemplateRules(ExpansionStrategy):
                 metadata["template_code"] = move_index
                 metadata["template"] = move[self.template_column]
                 template = TemplatedRetroReaction(mol, smarts=move[self.template_column], metadata=metadata,
-                                                  use_rdchiral=self.use_rdchiral)
+                                                  intern_cache=self.intern_cache)
                 possible_actions.append(template)
         return possible_actions
