@@ -118,7 +118,12 @@ class TestCacheOperations(unittest.TestCase):
         self.cache.set_cache("TESTKEY", 2, 0.5)
         self.cache.set_cache("TESTKEY", 1, 0.95)
         result = self.cache.get_cache("TESTKEY")
-        self.assertEqual(result, (1, 0.95))
+        self.assertEqual(result, (1, 0.95, False))
+
+    def test_cache_resolved_roundtrip(self):
+        self.cache.set_cache("TESTKEY", 1, 1.0, resolved=True)
+        result = self.cache.get_cache("TESTKEY")
+        self.assertEqual(result, (1, 1.0, True))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -159,8 +164,8 @@ class TestBulkOperations(unittest.TestCase):
         self.cache.set_cache("KEY1", 1, 0.9)
         self.cache.set_cache("KEY2", 2, 0.8)
         result = self.cache.get_cache_multi(["KEY1", "KEY2", "KEY3"])
-        self.assertEqual(result["KEY1"], (1, 0.9))
-        self.assertEqual(result["KEY2"], (2, 0.8))
+        self.assertEqual(result["KEY1"], (1, 0.9, False))
+        self.assertEqual(result["KEY2"], (2, 0.8, False))
         self.assertIsNone(result["KEY3"])
 
     def test_get_cache_multi_empty(self):
@@ -228,7 +233,7 @@ class TestConfigIsolation(unittest.TestCase):
 
         cache1.set_cache("SHARED_KEY", 1, 0.9)
         self.assertIsNone(cache2.get_cache("SHARED_KEY"))
-        self.assertEqual(cache1.get_cache("SHARED_KEY"), (1, 0.9))
+        self.assertEqual(cache1.get_cache("SHARED_KEY"), (1, 0.9, False))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -258,7 +263,7 @@ class TestNamespaceIsolation(unittest.TestCase):
 
         scaffold_a.set_cache("KEY", 1, 0.9)
         self.assertIsNone(scaffold_b.get_cache("KEY"))
-        self.assertEqual(scaffold_a.get_cache("KEY"), (1, 0.9))
+        self.assertEqual(scaffold_a.get_cache("KEY"), (1, 0.9, False))
 
 
 if __name__ == "__main__":

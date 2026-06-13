@@ -20,6 +20,7 @@ class TestSearch(unittest.TestCase):
         df = exp.search(["CCO"])
         self.assertIn("SMILES", df.columns)
         self.assertIn("score", df.columns)
+        self.assertIn("resolved", df.columns)
         self.assertIn("route", df.columns)
         self.assertIn("BBs", df.columns)
 

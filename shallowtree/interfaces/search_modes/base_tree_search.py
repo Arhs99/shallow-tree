@@ -2,7 +2,7 @@ import abc
 import hashlib
 from abc import abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from rdkit.Chem.rdchem import Mol
 from shallowtree.configs.input_configuration import InputConfiguration
@@ -46,45 +46,61 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int) -> float:
+    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+        # Returns (score, resolved). ``score`` is the soft recursive feasibility
+        # average, kept as a ranking signal; ``resolved`` is True only when every
+        # leaf of the chosen route is in stock. A route is committed to self.solved
+        # and the search stops expanding this node ONLY when it is fully resolved —
+        # a route that bottoms out on a non-stock leaf is not a real synthesis.
+        # Because resolved implies score == 1.0 by induction, the first resolved
+        # action is optimal, so we return on it.
+
+        # Cycle guard: a molecule that reappears on its own retrosynthetic path
+        # (e.g. an acid -> tert-butyl ester -> acid protect/deprotect loop) is a
+        # dead end, not a solution. Score it 0.0/unresolved and DO NOT cache it —
+        # this verdict is path-dependent while self.cache is keyed only by inchi_key.
+        if mol.inchi_key in ancestors:
+            return 0.0, False
         if depth > self._input_config.depth:
-            return 0.0
+            return 0.0, False
 
         if mol.inchi_key in self.cache:
-            cdepth, cscore = self.cache[mol.inchi_key]
+            cdepth, cscore, cresolved = self.cache[mol.inchi_key]
             if cdepth <= depth:
-                return cscore
+                return cscore, cresolved
 
         if mol in self.stock:
-            self.cache[mol.inchi_key] = (0, 1.0)
-            return 1.0
+            self.cache[mol.inchi_key] = (0, 1.0, True)
+            return 1.0, True
 
         # Check Redis cache if local cache miss
         if self.redis_cache and mol.inchi_key not in self.cache:
             redis_cache_data = self.redis_cache.get_cache(mol.inchi_key)
             if redis_cache_data:
-                cdepth, cscore = redis_cache_data
-                self.cache[mol.inchi_key] = (cdepth, cscore)  # Populate local cache
+                cdepth, cscore, cresolved = redis_cache_data
+                self.cache[mol.inchi_key] = (cdepth, cscore, cresolved)  # Populate local cache
                 if cdepth <= depth:
-                    # Also try to load solved data
-                    solved_data = self.redis_cache.get_solved(mol.inchi_key)
-                    if solved_data:
-                        self.solved[mol.inchi_key] = solved_data
-                    return cscore
+                    # Only a resolved result has a persisted route to load
+                    if cresolved:
+                        solved_data = self.redis_cache.get_solved(mol.inchi_key)
+                        if solved_data:
+                            self.solved[mol.inchi_key] = solved_data
+                    return cscore, cresolved
 
         feasible_actions = self._determine_feasible_actions(mol)
 
         score = 0.0
         for action in feasible_actions:
-            reactants = action.reactants
-            score = sum([self.req_search_tree(x, depth + 1) for x in reactants[0]]) / len(reactants[0])
-            if score > self.app_config.search.score_acceptance_threshold:
-                self.solved[mol.inchi_key] = (reactants[0], score, action.metadata['classification'])
-                self._update_cache(mol, depth, score)
-                return score
+            reactants = action.reactants[0]
+            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}) for x in reactants]
+            score = sum(s for s, _ in child_results) / len(reactants)
+            if all(resolved for _, resolved in child_results):
+                self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
+                self._update_cache(mol, depth, score, True)
+                return score, True
 
-        self._update_cache(mol, depth, score)
-        return score
+        self._update_cache(mol, depth, score, False)
+        return score, False
 
     @abstractmethod
     def search(self, *args, **kwargs) -> List:
@@ -142,10 +158,10 @@ class BaseTreeSearch(abc.ABC):
     def _update(self, *args, **kwargs) -> List:
         pass
 
-    def _update_cache(self, mol: TreeMolecule, depth: int, score: float):
-        self.cache[mol.inchi_key] = (depth, score)
+    def _update_cache(self, mol: TreeMolecule, depth: int, score: float, resolved: bool):
+        self.cache[mol.inchi_key] = (depth, score, resolved)
         if self.redis_cache:
-            self.redis_cache.set_cache(mol.inchi_key, depth, score)
+            self.redis_cache.set_cache(mol.inchi_key, depth, score, resolved)
 
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:
         """Pre-populate local caches from Redis for the root molecule subtree."""
@@ -153,10 +169,12 @@ class BaseTreeSearch(abc.ABC):
             cache_data = self.redis_cache.get_cache(root_mol.inchi_key)
             if cache_data:
                 self.cache[root_mol.inchi_key] = cache_data
-                solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
-                if solved_data:
-                    self.solved[root_mol.inchi_key] = solved_data
-                    self._load_solved_subtree(solved_data[0])
+                # Only a resolved result has a persisted route to load
+                if cache_data[2]:
+                    solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
+                    if solved_data:
+                        self.solved[root_mol.inchi_key] = solved_data
+                        self._load_solved_subtree(solved_data[0])
 
     def _load_solved_subtree(self, reactants: List[TreeMolecule]) -> None:
         """Recursively load solved entries for reactants."""
@@ -173,8 +191,8 @@ class BaseTreeSearch(abc.ABC):
             for inchi_key, (reactants, score, classification) in list(self.solved.items()):
                 self.redis_cache.set_solved(inchi_key, reactants, score, classification)
                 if inchi_key in self.cache:
-                    depth, cache_score = self.cache[inchi_key]
-                    self.redis_cache.set_cache(inchi_key, depth, cache_score)
+                    depth, cache_score, cache_resolved = self.cache[inchi_key]
+                    self.redis_cache.set_cache(inchi_key, depth, cache_score, cache_resolved)
 
     def _setup_redis_cache(self, cache_config: CacheConfiguration):
         if cache_config.enabled:
@@ -217,7 +235,9 @@ class BaseTreeSearch(abc.ABC):
         return filter_policy
 
     def _setup_rules_expansion(self, app_config) -> TemplateRules :
+        # Default rules file lives at shallowtree/rules/direct.csv. This module is
+        # at shallowtree/interfaces/search_modes/, so go up three levels.
         extra_template_path = app_config.extra_template_path if app_config.extra_template_path \
-            else Path(__file__).parent.parent / 'rules' / 'direct.csv'
+            else Path(__file__).parents[2] / 'rules' / 'direct.csv'
 
         return TemplateRules(extra_template_path, self._intern_cache)

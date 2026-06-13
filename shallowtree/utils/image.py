@@ -82,7 +82,7 @@ def molecules_to_images(
     :return: the produced images
     """
     # Make sanitized copies of all molecules
-    mol_copies = [UniqueMolecule(rd_mol=mol) for mol in mols]
+    mol_copies = [UniqueMolecule(rd_mol=mol.rd_mol) for mol in mols]
     for mol in mol_copies:
         mol.sanitize()
 

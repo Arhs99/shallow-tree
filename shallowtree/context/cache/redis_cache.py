@@ -102,32 +102,35 @@ class RedisCache:
         """
         return f"shallowtree:{self._config_hash}:{self._namespace}:{key_type}:{inchi_key}"
 
-    def get_cache(self, inchi_key: str) -> Optional[Tuple[int, float]]:
-        """Get cached depth and score for a molecule.
+    def get_cache(self, inchi_key: str) -> Optional[Tuple[int, float, bool]]:
+        """Get cached depth, score and resolved flag for a molecule.
 
         Args:
             inchi_key: The molecule's InChI key.
 
         Returns:
-            Tuple of (depth, score) if found, None otherwise.
+            Tuple of (depth, score, resolved) if found, None otherwise.
+            ``resolved`` defaults to False for legacy entries written before
+            the resolution gate existed.
         """
         key = self._make_key("cache", inchi_key)
         data = self._client.get(key)
         if data is None:
             return None
         parsed = json.loads(data)
-        return (parsed["depth"], parsed["score"])
+        return (parsed["depth"], parsed["score"], parsed.get("resolved", False))
 
-    def set_cache(self, inchi_key: str, depth: int, score: float) -> None:
-        """Store depth and score for a molecule.
+    def set_cache(self, inchi_key: str, depth: int, score: float, resolved: bool = False) -> None:
+        """Store depth, score and resolved flag for a molecule.
 
         Args:
             inchi_key: The molecule's InChI key.
             depth: Search depth at which this result was computed.
             score: Synthesis feasibility score.
+            resolved: Whether the route bottoms out entirely in stock.
         """
         key = self._make_key("cache", inchi_key)
-        data = json.dumps({"depth": depth, "score": score, "ts": int(time.time())})
+        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "ts": int(time.time())})
         self._client.set(key, data)
 
     def get_solved(
@@ -180,14 +183,14 @@ class RedisCache:
 
     def get_cache_multi(
         self, inchi_keys: List[str]
-    ) -> Dict[str, Optional[Tuple[int, float]]]:
+    ) -> Dict[str, Optional[Tuple[int, float, bool]]]:
         """Get cached data for multiple molecules in one round-trip.
 
         Args:
             inchi_keys: List of InChI keys to look up.
 
         Returns:
-            Dictionary mapping inchi_key to (depth, score) or None.
+            Dictionary mapping inchi_key to (depth, score, resolved) or None.
         """
         if not inchi_keys:
             return {}
@@ -201,5 +204,5 @@ class RedisCache:
                 result[inchi_key] = None
             else:
                 parsed = json.loads(data)
-                result[inchi_key] = (parsed["depth"], parsed["score"])
+                result[inchi_key] = (parsed["depth"], parsed["score"], parsed.get("resolved", False))
         return result
