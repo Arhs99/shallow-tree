@@ -89,7 +89,10 @@ class BaseTreeSearch(abc.ABC):
 
         feasible_actions = self._determine_feasible_actions(mol)
 
-        score = 0.0
+        # No action fully resolves this molecule: return the MAX soft score over
+        # actions (the best achievable ranking signal), not the last action tried
+        # — the latter is order-dependent and gives an arbitrary sub-threshold score.
+        best_score = 0.0
         for action in feasible_actions:
             reactants = action.reactants[0]
             child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}) for x in reactants]
@@ -98,9 +101,11 @@ class BaseTreeSearch(abc.ABC):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
                 self._update_cache(mol, depth, score, True)
                 return score, True
+            if score > best_score:
+                best_score = score
 
-        self._update_cache(mol, depth, score, False)
-        return score, False
+        self._update_cache(mol, depth, best_score, False)
+        return best_score, False
 
     @abstractmethod
     def search(self, *args, **kwargs) -> List:
