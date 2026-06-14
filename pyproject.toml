@@ -64,6 +64,7 @@ parallel = ["pathos"]
 searchcli = "shallowtree.interfaces.searchcli:main"
 download_public_data = "shallowtree.tools.download_public_data:main"
 smiles2stock = "shallowtree.tools.make_stock:main"
+build_stock = "shallowtree.tools.build_stock:main"
 searchapi = "shallowtree.interfaces.api:run"
 searchapi-genkey = "shallowtree.interfaces.api:generate_key"
 
