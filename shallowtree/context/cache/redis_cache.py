@@ -26,9 +26,11 @@ if TYPE_CHECKING:
 class RedisCache:
     """Persistent Redis cache for sharing search results across processes.
 
-    Stores both branch pruning data (depth, score) and route reconstruction
-    data (reactants, score, classification) with automatic config-based
-    namespace isolation.
+    Stores both branch pruning data (budget, score, resolved) and route
+    reconstruction data (reactants, score, classification) with automatic
+    config-based namespace isolation. ``budget`` is the remaining depth
+    ``max_depth - depth`` at which a verdict held (see BaseTreeSearch); reuse is
+    budget-aware, so the field must be a budget, not an absolute tree-depth.
     """
 
     def __init__(self, filter_policy: FilterPolicy, expansion_policy: ExpansionPolicy, stock: Stock,
@@ -105,35 +107,38 @@ class RedisCache:
         return f"shallowtree:{self._config_hash}:{self._namespace}:{key_type}:{inchi_key}"
 
     def get_cache(self, inchi_key: str) -> RedisDataDTO:
-        """Get cached depth, score and resolved flag for a molecule.
+        """Get cached budget, score and resolved flag for a molecule.
 
         Args:
             inchi_key: The molecule's InChI key.
 
         Returns:
-            Tuple of (depth, score, resolved) if found, None otherwise.
-            ``resolved`` defaults to False for legacy entries written before
-            the resolution gate existed.
+            A ``RedisDataDTO``; ``exists`` is False on a miss. ``budget`` is the
+            remaining depth ``max_depth - depth`` at which the verdict held. An
+            entry without a ``budget`` field is a legacy depth-keyed record
+            written before budget-aware reuse existed; it is semantically
+            incompatible, so it is treated as a miss (``exists`` False).
         """
         key = self._make_key("cache", inchi_key)
         data = self._client.get(key)
         if data is None:
             return RedisDataDTO(inchi_key=inchi_key, exists=False)
         parsed = json.loads(data)
-        dto = RedisDataDTO(inchi_key=inchi_key, exists=True, **parsed)
-        return dto
+        if "budget" not in parsed:
+            return RedisDataDTO(inchi_key=inchi_key, exists=False)
+        return RedisDataDTO(inchi_key=inchi_key, exists=True, **parsed)
 
-    def set_cache(self, inchi_key: str, depth: int, score: float, resolved: bool = False) -> None:
-        """Store depth, score and resolved flag for a molecule.
+    def set_cache(self, inchi_key: str, budget: int, score: float, resolved: bool = False) -> None:
+        """Store budget, score and resolved flag for a molecule.
 
         Args:
             inchi_key: The molecule's InChI key.
-            depth: Search depth at which this result was computed.
+            budget: Remaining depth (max_depth - depth) at which this verdict held.
             score: Synthesis feasibility score.
             resolved: Whether the route bottoms out entirely in stock.
         """
         key = self._make_key("cache", inchi_key)
-        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "timestamp": int(time.time())})
+        data = json.dumps({"budget": budget, "score": score, "resolved": resolved, "timestamp": int(time.time())})
         self._client.set(key, data)
 
     def get_solved(self, inchi_key: str) -> RedisResolvedDataDTO:

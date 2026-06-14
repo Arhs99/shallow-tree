@@ -104,26 +104,35 @@ class TestCacheOperations(unittest.TestCase):
         self.cache = _create_cache(self.fake_redis)
 
     def test_cache_roundtrip(self):
+        # First positional arg is the remaining budget (max_depth - depth).
         self.cache.set_cache("TESTKEY", 2, 0.95)
         result = self.cache.get_cache("TESTKEY")
         self.assertTrue(result.exists)
-        self.assertEqual(result.depth, 2)
+        self.assertEqual(result.budget, 2)
         self.assertEqual(result.score, 0.95)
 
     def test_cache_miss(self):
         result = self.cache.get_cache("NONEXISTENT")
         self.assertFalse(result.exists)
 
+    def test_legacy_depth_entry_is_a_miss(self):
+        # Records written before budget-aware reuse stored a "depth" field and no
+        # "budget"; they are semantically incompatible and must read back as a miss
+        # rather than be misinterpreted as a budget.
+        key = self.cache._make_key("cache", "LEGACYKEY")
+        self.fake_redis.set(key, json.dumps({"depth": 2, "score": 0.9, "resolved": True}))
+        self.assertFalse(self.cache.get_cache("LEGACYKEY").exists)
+
     def test_cache_overwrite(self):
         self.cache.set_cache("TESTKEY", 2, 0.5)
         self.cache.set_cache("TESTKEY", 1, 0.95)
         result = self.cache.get_cache("TESTKEY")
-        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.95, False))
+        self.assertEqual((result.budget, result.score, result.resolved), (1, 0.95, False))
 
     def test_cache_resolved_roundtrip(self):
         self.cache.set_cache("TESTKEY", 1, 1.0, resolved=True)
         result = self.cache.get_cache("TESTKEY")
-        self.assertEqual((result.depth, result.score, result.resolved), (1, 1.0, True))
+        self.assertEqual((result.budget, result.score, result.resolved), (1, 1.0, True))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -214,7 +223,7 @@ class TestConfigIsolation(unittest.TestCase):
         cache1.set_cache("SHARED_KEY", 1, 0.9)
         self.assertFalse(cache2.get_cache("SHARED_KEY").exists)
         result = cache1.get_cache("SHARED_KEY")
-        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.9, False))
+        self.assertEqual((result.budget, result.score, result.resolved), (1, 0.9, False))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -245,7 +254,7 @@ class TestNamespaceIsolation(unittest.TestCase):
         scaffold_a.set_cache("KEY", 1, 0.9)
         self.assertFalse(scaffold_b.get_cache("KEY").exists)
         result = scaffold_a.get_cache("KEY")
-        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.9, False))
+        self.assertEqual((result.budget, result.score, result.resolved), (1, 0.9, False))
 
 
 if __name__ == "__main__":

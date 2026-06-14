@@ -89,3 +89,24 @@ def sequential_search(input_config: InputConfiguration):
     if not input_config.routes:
         df = df.drop(columns=['route'])
     return df
+
+
+def iterative_deepening_search(input_config: InputConfiguration):
+    # Sequential iterative-deepening: build the stock once, then per target sweep
+    # max_depth from d_start to d_max (defaults to ``depth``) on one warm search
+    # instance, reporting the minimal resolving depth. Mirrors sequential_search.
+    config_dict = Configuration.from_json(input_config.app_configuration_path)
+    app_config = ApplicationConfiguration(**config_dict)
+
+    shared = _build_shared_stock(app_config.stock)
+    shm_name, shm_count = shared.shm_name, len(shared)
+    stock = _build_worker_stock(shm_name, shm_count)
+    input_config.prebuilt_stock = stock
+
+    d_max = input_config.d_max if input_config.d_max is not None else input_config.depth
+    search = TreeSearch(input_config)
+    df = search.search_iterative(input_config.smiles, input_config.d_start, d_max)
+
+    if not input_config.routes:
+        df = df.drop(columns=['route'])
+    return df

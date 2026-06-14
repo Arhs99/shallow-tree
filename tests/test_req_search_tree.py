@@ -21,14 +21,22 @@ class TestReqSearchTree(unittest.TestCase):
         self.assertEqual(score, 1.0)
         self.assertTrue(resolved)
 
-    def test_stock_mol_cached_at_depth_0(self):
+    def test_stock_mol_cached_as_budget_0_always_reusable(self):
+        # A stock leaf is cached as (budget=0, 1.0, True). The True reuse rule
+        # (budget_now >= 0, always true) makes it reusable at any budget.
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
+        exp._input_config.depth = 5
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.req_search_tree(mol, depth=0)
         self.assertIn(mol.inchi_key, exp.cache)
         self.assertEqual(exp.cache[mol.inchi_key], (0, 1.0, True))
+        # Reused even at the deepest query (smallest budget); stock check would
+        # also re-confirm, so flip stock off to prove the cache entry is used.
+        stock.__contains__ = MagicMock(return_value=False)
+        score, resolved = exp.req_search_tree(mol, depth=5)
+        self.assertEqual((score, resolved), (1.0, True))
 
     def test_depth_exceeds_max_returns_0(self):
         exp = _make_search()
@@ -38,24 +46,53 @@ class TestReqSearchTree(unittest.TestCase):
         self.assertEqual(score, 0.0)
         self.assertFalse(resolved)
 
-    def test_cache_hit_reuse_when_cdepth_le_depth(self):
+    def test_resolved_reused_when_budget_now_ge_cached(self):
+        # resolved=True at budget K_c=2 is valid at any larger budget. Query at
+        # depth 0 with max_depth 4 -> budget_now=4 >= 2 -> reuse.
         exp = _make_search()
+        exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.cache[mol.inchi_key] = (1, 0.8, False)
-        score, resolved = exp.req_search_tree(mol, depth=2)
-        self.assertEqual(score, 0.8)
-        self.assertFalse(resolved)
+        exp.cache[mol.inchi_key] = (2, 1.0, True)
+        score, resolved = exp.req_search_tree(mol, depth=0)
+        self.assertEqual((score, resolved), (1.0, True))
 
-    def test_cache_skip_when_cdepth_gt_depth(self):
-        """When cached depth > current depth, cache should be skipped."""
+    def test_resolved_recomputed_when_budget_now_lt_cached(self):
+        # resolved=True at budget K_c=4 must NOT be reused at a smaller budget
+        # (the route may not fit). depth 3, max_depth 4 -> budget_now=1 < 4 ->
+        # recompute; with the mol now in stock the fresh verdict is (1.0, True).
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
+        exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.cache[mol.inchi_key] = (2, 0.5, False)
+        exp.cache[mol.inchi_key] = (4, 0.7, True)
+        score, resolved = exp.req_search_tree(mol, depth=3)
+        self.assertEqual((score, resolved), (1.0, True))
+
+    def test_unresolved_reused_when_budget_now_le_cached(self):
+        # resolved=False at budget K_c=3 is valid at any smaller-or-equal budget.
+        # depth 2, max_depth 4 -> budget_now=2 <= 3 -> reuse the False verdict.
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_search(stock=stock)
+        exp._input_config.depth = 4
+        mol = TreeMolecule(parent=None, smiles="CCO")
+        exp.cache[mol.inchi_key] = (3, 0.5, False)
+        score, resolved = exp.req_search_tree(mol, depth=2)
+        self.assertEqual((score, resolved), (0.5, False))
+
+    def test_unresolved_recomputed_when_budget_now_gt_cached(self):
+        # resolved=False at budget K_c=1 must NOT be reused at a larger budget
+        # (the extra room may resolve it). depth 0, max_depth 4 -> budget_now=4 > 1
+        # -> recompute; with the mol now in stock the fresh verdict is (1.0, True).
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=True)
+        exp = _make_search(stock=stock)
+        exp._input_config.depth = 4
+        mol = TreeMolecule(parent=None, smiles="CCO")
+        exp.cache[mol.inchi_key] = (1, 0.5, False)
         score, resolved = exp.req_search_tree(mol, depth=0)
-        self.assertEqual(score, 1.0)
-        self.assertTrue(resolved)
+        self.assertEqual((score, resolved), (1.0, True))
 
     def test_mean_of_reactants_scoring(self):
         """Score = mean of reactant scores."""

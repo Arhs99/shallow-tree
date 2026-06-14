@@ -21,7 +21,10 @@ class TestCacheCorrectness(unittest.TestCase):
         exp.req_search_tree(mol, depth=0)
         self.assertIn(mol.inchi_key, exp.cache)
 
-    def test_depth_stored_correctly(self):
+    def test_budget_stored_correctly(self):
+        # The cache stores the remaining BUDGET (max_depth - depth) at which the
+        # verdict held, not the absolute tree-depth. With max_depth=3 and a query
+        # at depth=1 the stored budget must be 2 (distinct from the depth, 1).
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         reactant1 = TreeMolecule(parent=mol, smiles="c1ccccc1")
         reactant2 = TreeMolecule(parent=mol, smiles="CO")
@@ -30,7 +33,7 @@ class TestCacheCorrectness(unittest.TestCase):
         stock = MagicMock()
         stock.__contains__ = MagicMock(side_effect=lambda m: m.inchi_key in stock_inchis)
         exp = _make_search(stock=stock)
-        exp._input_config.depth = 2
+        exp._input_config.depth = 3
 
         action = MagicMock()
         action.reactants = ((reactant1, reactant2),)
@@ -39,8 +42,8 @@ class TestCacheCorrectness(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp.req_search_tree(mol, depth=1)
-        depth, _, _ = exp.cache[mol.inchi_key]
-        self.assertEqual(depth, 1)
+        budget, _, _ = exp.cache[mol.inchi_key]
+        self.assertEqual(budget, 2)
 
 
 if __name__ == "__main__":

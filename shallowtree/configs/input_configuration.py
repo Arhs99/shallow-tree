@@ -12,3 +12,8 @@ class InputConfiguration:
     depth: int = 2
     parallel_processes: int = 1
     prebuilt_stock: Optional[Any] = None
+    # Iterative-deepening: when enabled, sweep max_depth from d_start upward and
+    # report the minimal resolving depth per target (d_max defaults to ``depth``).
+    iterative_deepening: bool = False
+    d_start: int = 2
+    d_max: Optional[int] = None
