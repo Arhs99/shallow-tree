@@ -189,7 +189,7 @@ class BaseTreeSearch(abc.ABC):
                     self.solved[mol.inchi_key] = (solved_dto.reactants, solved_dto.score, solved_dto.classification)
                     self._load_solved_subtree(solved_dto.reactants)
 
-    def _save_to_redis(self, start_time) -> None:
+    def _save_to_redis(self, start_time: float) -> None:
         """Persist all solved routes to Redis."""
         if self.redis_cache:
             for inchi_key, (reactants, score, classification) in list(self.solved.items()):

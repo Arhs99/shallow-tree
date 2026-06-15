@@ -11,4 +11,5 @@ class RedisResolvedDataDTO:
     score: float = 0
     resolved: bool = False
     exists: bool = False #TODO decide if this is needed
-    time_seconds: int = -1
+    timestamp: int = -1
+    duration_seconds: int = -1

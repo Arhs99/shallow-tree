@@ -118,7 +118,7 @@ class RedisCache:
         key = self._make_key("cache", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return RedisDataDTO(inchi_key=inchi_key, exists=True)
+            return RedisDataDTO(inchi_key=inchi_key, exists=False)
         parsed = json.loads(data)
         dto = RedisDataDTO(inchi_key=inchi_key, exists=True, **parsed)
         return dto
@@ -133,7 +133,7 @@ class RedisCache:
             resolved: Whether the route bottoms out entirely in stock.
         """
         key = self._make_key("cache", inchi_key)
-        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "time_seconds": int(time.time())})
+        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "timestamp": int(time.time())})
         self._client.set(key, data)
 
     def get_solved(self, inchi_key: str) -> RedisResolvedDataDTO:
@@ -149,7 +149,7 @@ class RedisCache:
         key = self._make_key("solved", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return RedisResolvedDataDTO(inchi_key=inchi_key, exists=True)
+            return RedisResolvedDataDTO(inchi_key=inchi_key, exists=False)
         parsed = json.loads(data)
         # Reconstruct TreeMolecule objects from SMILES
         reactants = [
@@ -158,7 +158,8 @@ class RedisCache:
         ]
         return RedisResolvedDataDTO(inchi_key=inchi_key, reactants=reactants, **parsed, exists=True)
 
-    def set_solved(self, inchi_key: str, reactants: List[TreeMolecule], score: float, classification: str, start_time) -> None:
+    def set_solved(self, inchi_key: str, reactants: List[TreeMolecule], score: float, classification: str,
+                   start_time: float) -> None:
         """Store solved route data for a molecule.
 
         Args:
@@ -166,40 +167,15 @@ class RedisCache:
             reactants: List of reactant TreeMolecule objects.
             score: Synthesis feasibility score.
             classification: Reaction classification string.
+            start_time: Wall-clock time when the search for this root began; used
+                to record how long solving took.
         """
-        delta_time = time.time() - start_time
         key = self._make_key("solved", inchi_key)
         data = json.dumps({
             "reactants_smiles": [mol.smiles for mol in reactants],
             "score": score,
             "classification": classification,
-            "time_seconds": int(delta_time),
+            "timestamp": int(time.time()),
+            "duration_seconds": int(time.time() - start_time),
         })
         self._client.set(key, data)
-
-    #TODO: see if we need this
-    def get_cache_multi(
-        self, inchi_keys: List[str]
-    ) -> Dict[str, Optional[Tuple[int, float, bool]]]:
-        """Get cached data for multiple molecules in one round-trip.
-
-        Args:
-            inchi_keys: List of InChI keys to look up.
-
-        Returns:
-            Dictionary mapping inchi_key to (depth, score, resolved) or None.
-        """
-        if not inchi_keys:
-            return {}
-
-        keys = [self._make_key("cache", ik) for ik in inchi_keys]
-        values = self._client.mget(keys)
-
-        result = {}
-        for inchi_key, data in zip(inchi_keys, values):
-            if data is None:
-                result[inchi_key] = None
-            else:
-                parsed = json.loads(data)
-                result[inchi_key] = (parsed["depth"], parsed["score"], parsed.get("resolved", False))
-        return result

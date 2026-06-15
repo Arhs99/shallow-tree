@@ -67,7 +67,7 @@ class StandardSearch(BaseTreeSearch):
         return resolved
 
     def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List,
-                building_blocks: List, start_time) -> List:
+                building_blocks: List, start_time: float) -> List:
         # The gate drives the search toward resolved routes; re-validate against the
         # actually reconstructed route so the reported ``resolved`` is honest (True
         # only when every leaf is really in stock). The soft ``score`` is retained
