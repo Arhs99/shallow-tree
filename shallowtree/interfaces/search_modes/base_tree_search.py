@@ -75,17 +75,16 @@ class BaseTreeSearch(abc.ABC):
 
         # Check Redis cache if local cache miss
         if self.redis_cache and mol.inchi_key not in self.cache:
-            redis_cache_data = self.redis_cache.get_cache(mol.inchi_key)
-            if redis_cache_data:
-                cdepth, cscore, cresolved = redis_cache_data
-                self.cache[mol.inchi_key] = (cdepth, cscore, cresolved)  # Populate local cache
-                if cdepth <= depth:
+            dto = self.redis_cache.get_cache(mol.inchi_key)
+            if dto.exists:
+                self.cache[mol.inchi_key] = (dto.depth, dto.score, dto.resolved)  # Populate local cache
+                if dto.depth <= depth:
                     # Only a resolved result has a persisted route to load
-                    if cresolved:
-                        solved_data = self.redis_cache.get_solved(mol.inchi_key)
-                        if solved_data:
-                            self.solved[mol.inchi_key] = solved_data
-                    return cscore, cresolved
+                    if dto.resolved:
+                        solved_dto = self.redis_cache.get_solved(mol.inchi_key)
+                        if solved_dto.exists:
+                            self.solved[mol.inchi_key] = (solved_dto.reactants, solved_dto.score, solved_dto.classification)
+                    return dto.score, dto.resolved
 
         feasible_actions = self._determine_feasible_actions(mol)
 
@@ -171,30 +170,30 @@ class BaseTreeSearch(abc.ABC):
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:
         """Pre-populate local caches from Redis for the root molecule subtree."""
         if self.redis_cache:
-            cache_data = self.redis_cache.get_cache(root_mol.inchi_key)
-            if cache_data:
-                self.cache[root_mol.inchi_key] = cache_data
+            dto = self.redis_cache.get_cache(root_mol.inchi_key)
+            if dto.exists:
+                self.cache[root_mol.inchi_key] = (dto.depth, dto.score, dto.resolved)
                 # Only a resolved result has a persisted route to load
-                if cache_data[2]:
-                    solved_data = self.redis_cache.get_solved(root_mol.inchi_key)
-                    if solved_data:
-                        self.solved[root_mol.inchi_key] = solved_data
-                        self._load_solved_subtree(solved_data[0])
+                if dto.resolved:
+                    solved_dto = self.redis_cache.get_solved(root_mol.inchi_key)
+                    if solved_dto.exists:
+                        self.solved[root_mol.inchi_key] = (solved_dto.reactants, solved_dto.score, solved_dto.classification)
+                        self._load_solved_subtree(solved_dto.reactants)
 
     def _load_solved_subtree(self, reactants: List[TreeMolecule]) -> None:
         """Recursively load solved entries for reactants."""
         for mol in reactants:
             if mol.inchi_key not in self.solved:
-                solved_data = self.redis_cache.get_solved(mol.inchi_key)
-                if solved_data:
-                    self.solved[mol.inchi_key] = solved_data
-                    self._load_solved_subtree(solved_data[0])
+                solved_dto = self.redis_cache.get_solved(mol.inchi_key)
+                if solved_dto.exists:
+                    self.solved[mol.inchi_key] = (solved_dto.reactants, solved_dto.score, solved_dto.classification)
+                    self._load_solved_subtree(solved_dto.reactants)
 
-    def _save_to_redis(self) -> None:
+    def _save_to_redis(self, start_time: float) -> None:
         """Persist all solved routes to Redis."""
         if self.redis_cache:
             for inchi_key, (reactants, score, classification) in list(self.solved.items()):
-                self.redis_cache.set_solved(inchi_key, reactants, score, classification)
+                self.redis_cache.set_solved(inchi_key, reactants, score, classification, start_time)
                 if inchi_key in self.cache:
                     depth, cache_score, cache_resolved = self.cache[inchi_key]
                     self.redis_cache.set_cache(inchi_key, depth, cache_score, cache_resolved)

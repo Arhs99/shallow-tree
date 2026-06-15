@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+import time
 from collections import defaultdict
 from typing import List
 
@@ -16,13 +17,14 @@ class StandardSearch(BaseTreeSearch):
     def search(self, smiles: List[str]) -> pd.DataFrame:
         rows = []
         for smi in smiles:
+            start_time = time.time()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
             building_blocks = []
 
             self._load_from_redis(mol)
             score, resolved = self.req_search_tree(mol, depth=0)
-            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks)
+            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time)
 
         df = pd.DataFrame(rows)
         return df
@@ -64,14 +66,15 @@ class StandardSearch(BaseTreeSearch):
             resolved = self.best_route(x, depth + 1, tree, building_blocks, ancestors | {mol.inchi_key}) and resolved
         return resolved
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List, building_blocks: List) -> List:
+    def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List,
+                building_blocks: List, start_time: float) -> List:
         # The gate drives the search toward resolved routes; re-validate against the
         # actually reconstructed route so the reported ``resolved`` is honest (True
         # only when every leaf is really in stock). The soft ``score`` is retained
         # as a ranking signal.
         if resolved:
             resolved = self.best_route(mol, 0, tree, building_blocks)
-            self._save_to_redis()  # Persist to Redis if available and successful
+            self._save_to_redis(start_time)  # Persist to Redis if available and successful
         rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks})
         return rows
 

@@ -1,4 +1,5 @@
 from collections import defaultdict
+import time
 from typing import List, Tuple
 
 import pandas as pd
@@ -26,6 +27,7 @@ class ScaffoldSearch(BaseTreeSearch):
         context_scaffold_stripped = None if wildcard_info is None else wildcard_info[1]
 
         for smi in smiles:
+            start_time = time.time()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
             building_blocks = []
@@ -34,7 +36,7 @@ class ScaffoldSearch(BaseTreeSearch):
             self._load_from_redis(mol)
             feasible_actions = self._determine_feasible_actions(mol)
             score, resolved = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
-            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, context_scaffold, context_scaffold_stripped)
+            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time, context_scaffold, context_scaffold_stripped)
         df = pd.DataFrame(rows)
         return df
 
@@ -186,14 +188,14 @@ class ScaffoldSearch(BaseTreeSearch):
         return score, resolved
 
     def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List, building_blocks: List,
-                context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
+                start_time: float, context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
         # The gate drives the search toward resolved routes; re-validate against the
         # actually reconstructed route so the reported ``resolved`` is honest (all
         # non-scaffold leaves really in stock). The soft ``score`` is retained as a
         # ranking signal.
         if resolved:
             resolved = self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
-            self._save_to_redis()  # Persist to Redis if available and successful
+            self._save_to_redis(start_time)  # Persist to Redis if available and successful
         rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks})
         return rows
 
