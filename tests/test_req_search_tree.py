@@ -10,15 +10,16 @@ from tests.search_helpers import _make_search, _make_action
 
 
 class TestReqSearchTree(unittest.TestCase):
-    """Test req_search_tree logic."""
+    """Test req_search_tree logic. Returns (score, resolved)."""
 
     def test_stock_mol_returns_1(self):
         stock = MagicMock()
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
         mol = TreeMolecule(parent=None, smiles="CCO")
-        score = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0)
         self.assertEqual(score, 1.0)
+        self.assertTrue(resolved)
 
     def test_stock_mol_cached_at_depth_0(self):
         stock = MagicMock()
@@ -27,21 +28,23 @@ class TestReqSearchTree(unittest.TestCase):
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.req_search_tree(mol, depth=0)
         self.assertIn(mol.inchi_key, exp.cache)
-        self.assertEqual(exp.cache[mol.inchi_key], (0, 1.0))
+        self.assertEqual(exp.cache[mol.inchi_key], (0, 1.0, True))
 
     def test_depth_exceeds_max_returns_0(self):
         exp = _make_search()
         exp._input_config.depth = 2
         mol = TreeMolecule(parent=None, smiles="CCO")
-        score = exp.req_search_tree(mol, depth=3)
+        score, resolved = exp.req_search_tree(mol, depth=3)
         self.assertEqual(score, 0.0)
+        self.assertFalse(resolved)
 
     def test_cache_hit_reuse_when_cdepth_le_depth(self):
         exp = _make_search()
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.cache[mol.inchi_key] = (1, 0.8)
-        score = exp.req_search_tree(mol, depth=2)
+        exp.cache[mol.inchi_key] = (1, 0.8, False)
+        score, resolved = exp.req_search_tree(mol, depth=2)
         self.assertEqual(score, 0.8)
+        self.assertFalse(resolved)
 
     def test_cache_skip_when_cdepth_gt_depth(self):
         """When cached depth > current depth, cache should be skipped."""
@@ -49,9 +52,10 @@ class TestReqSearchTree(unittest.TestCase):
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.cache[mol.inchi_key] = (2, 0.5)
-        score = exp.req_search_tree(mol, depth=0)
+        exp.cache[mol.inchi_key] = (2, 0.5, False)
+        score, resolved = exp.req_search_tree(mol, depth=0)
         self.assertEqual(score, 1.0)
+        self.assertTrue(resolved)
 
     def test_mean_of_reactants_scoring(self):
         """Score = mean of reactant scores."""
@@ -66,11 +70,12 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0)
         self.assertEqual(score, 1.0)
+        self.assertTrue(resolved)
 
-    def test_solved_threshold(self):
-        """Only scores > 0.9 are added to self.solved."""
+    def test_resolved_route_is_solved(self):
+        """A route whose reactants are all in stock is resolved and solved."""
         mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
         reactant1 = TreeMolecule(parent=mol, smiles="c1ccccc1")
         reactant2 = TreeMolecule(parent=mol, smiles="CO")
@@ -88,8 +93,48 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0)
+        self.assertTrue(resolved)
         self.assertIn(mol.inchi_key, exp.solved)
+
+    def test_unresolved_route_not_solved(self):
+        """A route with a non-stock leaf is NOT resolved and NOT committed to solved,
+        even when the soft score crosses the acceptance threshold."""
+        mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
+        reactant1 = TreeMolecule(parent=mol, smiles="c1ccccc1")
+        reactant2 = TreeMolecule(parent=mol, smiles="CO")
+
+        # Only one of the two leaves is in stock -> route is not fully resolved.
+        stock_inchis = {reactant1.inchi_key}
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(side_effect=lambda m: m.inchi_key in stock_inchis)
+        exp = _make_search(stock=stock)
+        exp._input_config.depth = 1  # reactant2 cannot be expanded further -> dead leaf
+
+        action = MagicMock()
+        action.reactants = ((reactant1, reactant2),)
+        action.metadata = {"classification": "test", "policy_name": "rules", "feasibility": 1.0}
+
+        exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
+        exp.rules_expansion.get_actions = MagicMock(return_value=[action])
+
+        score, resolved = exp.req_search_tree(mol, depth=0)
+        self.assertFalse(resolved)
+        self.assertNotIn(mol.inchi_key, exp.solved)
+
+    def test_cycle_guard_breaks_self_referential_path(self):
+        """A reactant that reappears on its own path scores 0.0/unresolved and is
+        not cached (the verdict is path-dependent)."""
+        mol = TreeMolecule(parent=None, smiles="c1ccccc1CO")
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=False)
+        exp = _make_search(stock=stock)
+        exp._input_config.depth = 5
+
+        score, resolved = exp.req_search_tree(mol, depth=0, ancestors=frozenset({mol.inchi_key}))
+        self.assertEqual(score, 0.0)
+        self.assertFalse(resolved)
+        self.assertNotIn(mol.inchi_key, exp.cache)
 
     def test_filter_threshold_gates_actions(self):
         """ML actions with feasibility < 0.5 should be excluded."""
@@ -109,8 +154,9 @@ class TestReqSearchTree(unittest.TestCase):
         exp.filter_policy.__getitem__ = MagicMock(return_value=mock_filter)
         exp.filter_policy.selection = {"test_filter": True}
 
-        score = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0)
         self.assertEqual(score, 0.0)
+        self.assertFalse(resolved)
 
     def test_rules_actions_bypass_filter(self):
         """Actions with policy_name='rules' bypass filter check."""
@@ -125,8 +171,9 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0)
         self.assertGreater(score, 0.9)
+        self.assertTrue(resolved)
 
 
 if __name__ == "__main__":

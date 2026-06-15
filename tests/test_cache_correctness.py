@@ -39,7 +39,7 @@ class TestCacheCorrectness(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp.req_search_tree(mol, depth=1)
-        depth, _ = exp.cache[mol.inchi_key]
+        depth, _, _ = exp.cache[mol.inchi_key]
         self.assertEqual(depth, 1)
 
 

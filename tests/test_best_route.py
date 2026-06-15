@@ -26,10 +26,11 @@ class TestBestRoute(unittest.TestCase):
 
         tree = defaultdict(list)
         building_blocks = []
-        exp.best_route(mol, 0, tree, building_blocks)
+        resolved = exp.best_route(mol, 0, tree, building_blocks)
 
         self.assertIn(1, tree)
         self.assertEqual(len(building_blocks), 2)
+        self.assertTrue(resolved)  # both leaves in stock
 
     def test_unsolved_mol_becomes_bb(self):
         exp = _make_search()
@@ -101,13 +102,38 @@ class TestBestRoute(unittest.TestCase):
         tree = defaultdict(list)
         building_blocks = []
         with self.assertLogs(exp._logger, level="WARNING") as cm:
-            exp.best_route(root, 0, tree, building_blocks)
+            resolved = exp.best_route(root, 0, tree, building_blocks)
 
+        self.assertFalse(resolved)  # boundary leaf not in stock -> route not resolved
         self.assertTrue(any("route truncated" in m for m in cm.output))
         self.assertIn(leaf_smiles, building_blocks)       # boundary leaf recorded
         self.assertNotIn(deep_smiles, building_blocks)    # not expanded past the limit
         self.assertNotIn(3, tree)                 # no depth-3 reaction emitted
         self.assertIn(2, tree)                    # mid => leaf still emitted
+
+    def test_best_route_cycle_guard_emits_leaf(self):
+        """A self-referential solved chain (root -> mid -> root) must not recurse
+        forever: the repeated node is emitted as a route leaf instead."""
+        stock = MagicMock()
+        stock.__contains__ = MagicMock(return_value=False)
+        exp = _make_search(stock=stock)
+        exp._input_config.depth = 10
+
+        root = TreeMolecule(parent=None, smiles="c1ccccc1CO")
+        mid = TreeMolecule(parent=root, smiles="c1ccccc1C(=O)O")
+        exp.solved = {
+            root.inchi_key: ((mid,), 1.0, "r1"),
+            mid.inchi_key: ((root,), 1.0, "r2"),  # points back at the root -> cycle
+        }
+
+        tree = defaultdict(list)
+        building_blocks = []
+        resolved = exp.best_route(root, 0, tree, building_blocks)
+
+        # The cycle terminates: root reappears as a leaf, not an infinite recursion,
+        # and the cyclic route is reported not resolved.
+        self.assertIn(root.smiles, building_blocks)
+        self.assertFalse(resolved)
 
     def test_best_route_depth_boundary_leaf_silent_when_in_stock(self):
         """An in-stock boundary leaf is recorded but does not warn."""

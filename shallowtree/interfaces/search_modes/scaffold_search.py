@@ -1,4 +1,5 @@
 from collections import defaultdict
+import time
 from typing import List, Tuple
 
 import pandas as pd
@@ -26,6 +27,7 @@ class ScaffoldSearch(BaseTreeSearch):
         context_scaffold_stripped = None if wildcard_info is None else wildcard_info[1]
 
         for smi in smiles:
+            start_time = time.time()
             solution = defaultdict(list)
             mol = TreeMolecule(parent=None, smiles=smi)
             building_blocks = []
@@ -33,13 +35,26 @@ class ScaffoldSearch(BaseTreeSearch):
             # Pre-populate from Redis if available
             self._load_from_redis(mol)
             feasible_actions = self._determine_feasible_actions(mol)
-            score = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
-            rows = self._update(mol, smi, score, solution, rows, building_blocks, context_scaffold, context_scaffold_stripped)
+            score, resolved = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
+            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time, context_scaffold, context_scaffold_stripped)
         df = pd.DataFrame(rows)
         return df
 
     def best_route(self, mol: TreeMolecule, depth: int, tree: defaultdict, building_blocks: List,
-                   context_scaffold: Mol = None, context_scaffold_stripped: Mol = None):
+                   context_scaffold: Mol = None, context_scaffold_stripped: Mol = None,
+                   ancestors: frozenset = frozenset()) -> bool:
+        # Reconstructs the route and returns whether it is fully resolved. A leaf
+        # is resolved if it is in stock OR it is the intended context-scaffold
+        # terminal (the deliberate stopping point, never a buyable building block).
+        # This re-validates the gate's verdict, which is cache-optimistic across
+        # depths (see StandardSearch.best_route).
+
+        # Defensive cycle guard mirroring req_search_tree: never recurse into a
+        # molecule already on the current route path — emit it as a (non-resolved)
+        # leaf instead of looping forever.
+        if mol.inchi_key in ancestors:
+            building_blocks.append(mol.smiles)
+            return False
         # Past the depth limit a node is a route leaf — never expand it further,
         # even if it is in self.solved (that knowledge came from a shallower
         # search of the same molecule as its own target). Forcing tup=None here
@@ -47,17 +62,23 @@ class ScaffoldSearch(BaseTreeSearch):
         # checked, warned, and recorded in BBs instead of being silently dropped.
         tup = None if depth > self._input_config.depth else self.solved.get(mol.inchi_key)
         if tup is None:
-            if mol not in self.stock and not self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped):
+            matched = self._matches_context_scaffold(mol, context_scaffold, context_scaffold_stripped)
+            in_stock = mol in self.stock
+            if not in_stock and not matched:
                 self._logger.warning(
                     f"best_route: {mol.smiles} is a route leaf but not in stock — "
                     "route truncated (depth boundary or cache/solved invariant)")
             building_blocks.append(mol.smiles)
-            return
+            return in_stock or matched
         rxn, score, clas = tup
         reactants = '.'.join([m.smiles for m in rxn])
         tree[depth + 1].append([f'{mol.smiles} => {reactants}', clas])
+        resolved = True
         for x in rxn:
-            self.best_route(x, depth + 1, tree, building_blocks, context_scaffold, context_scaffold_stripped)
+            # recursive call first so the full route/BBs are always built (no short-circuit)
+            resolved = self.best_route(x, depth + 1, tree, building_blocks, context_scaffold,
+                                       context_scaffold_stripped, ancestors | {mol.inchi_key}) and resolved
+        return resolved
 
     @staticmethod
     def _parse_scaffold_query(scaffold_str: str):
@@ -132,8 +153,9 @@ class ScaffoldSearch(BaseTreeSearch):
         return wildcard_mapping, scaffold_stripped
 
     def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List,
-                                wildcard_info=None) -> float:
+                                wildcard_info=None) -> Tuple[float, bool]:
         score = 0
+        resolved = False
         root_hit = mol.rd_mol.GetSubstructMatch(scaffold)
         root_match = set(mol.index_to_mapping[x] for x in root_hit)
         wildcard_mapping, scaffold_stripped = self._create_wildcard_mapping(mol, wildcard_info, root_hit)
@@ -152,18 +174,29 @@ class ScaffoldSearch(BaseTreeSearch):
                 chosen = relaxed
             else:
                 continue
-            score_list = [self.req_search_tree(x, 1) for x in reactants if x != chosen]
-            score = sum(score_list) / (len(reactants) - 1)
-            if score > self.app_config.search.score_acceptance_threshold:
+            # The chosen scaffold reactant is the intended terminal — it is excluded
+            # from both scoring and resolution (it carries the context scaffold, not a
+            # stock building block). "Resolved" therefore means every OTHER reactant
+            # bottoms out in stock.
+            child_results = [self.req_search_tree(x, 1, frozenset({mol.inchi_key})) for x in reactants if x != chosen]
+            score = sum(s for s, _ in child_results) / (len(reactants) - 1)
+            if all(g for _, g in child_results):
+                # Last resolved disconnection wins (preserves the pre-existing
+                # scaffold route selection); no early break.
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
-        return score
+                resolved = True
+        return score, resolved
 
-    def _update(self, mol: TreeMolecule, smi: str, score: float, tree: defaultdict, rows: List, building_blocks: List,
-                context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
-        if score > self.app_config.search.score_acceptance_threshold:
-            self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
-            self._save_to_redis()  # Persist to Redis if available and successful
-        rows.append({'SMILES': smi, 'score': score, 'route': dict(tree), 'BBs': building_blocks})
+    def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List, building_blocks: List,
+                start_time: float, context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
+        # The gate drives the search toward resolved routes; re-validate against the
+        # actually reconstructed route so the reported ``resolved`` is honest (all
+        # non-scaffold leaves really in stock). The soft ``score`` is retained as a
+        # ranking signal.
+        if resolved:
+            resolved = self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
+            self._save_to_redis(start_time)  # Persist to Redis if available and successful
+        rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks})
         return rows
 
     def _matches_context_scaffold(self, mol: TreeMolecule, context_scaffold: Mol, context_scaffold_stripped: Mol) -> bool:

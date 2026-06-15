@@ -106,19 +106,24 @@ class TestCacheOperations(unittest.TestCase):
     def test_cache_roundtrip(self):
         self.cache.set_cache("TESTKEY", 2, 0.95)
         result = self.cache.get_cache("TESTKEY")
-        self.assertIsNotNone(result)
-        self.assertEqual(result[0], 2)
-        self.assertEqual(result[1], 0.95)
+        self.assertTrue(result.exists)
+        self.assertEqual(result.depth, 2)
+        self.assertEqual(result.score, 0.95)
 
     def test_cache_miss(self):
         result = self.cache.get_cache("NONEXISTENT")
-        self.assertIsNone(result)
+        self.assertFalse(result.exists)
 
     def test_cache_overwrite(self):
         self.cache.set_cache("TESTKEY", 2, 0.5)
         self.cache.set_cache("TESTKEY", 1, 0.95)
         result = self.cache.get_cache("TESTKEY")
-        self.assertEqual(result, (1, 0.95))
+        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.95, False))
+
+    def test_cache_resolved_roundtrip(self):
+        self.cache.set_cache("TESTKEY", 1, 1.0, resolved=True)
+        result = self.cache.get_cache("TESTKEY")
+        self.assertEqual((result.depth, result.score, result.resolved), (1, 1.0, True))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -134,37 +139,17 @@ class TestSolvedOperations(unittest.TestCase):
             "shallowtree.chem.molecules.tree_molecule.TreeMolecule",
             side_effect=lambda parent, smiles: MockTreeMolecule(smiles),
         ):
-            self.cache.set_solved("TESTKEY", reactants, 0.95, "Ester hydrolysis")
+            self.cache.set_solved("TESTKEY", reactants, 0.95, "Ester hydrolysis", start_time=0.0)
             result = self.cache.get_solved("TESTKEY")
 
-        self.assertIsNotNone(result)
-        r_reactants, r_score, r_class = result
-        self.assertEqual(len(r_reactants), 2)
-        self.assertEqual(r_reactants[0].smiles, "CCO")
-        self.assertEqual(r_score, 0.95)
-        self.assertEqual(r_class, "Ester hydrolysis")
+        self.assertTrue(result.exists)
+        self.assertEqual(len(result.reactants), 2)
+        self.assertEqual(result.reactants[0].smiles, "CCO")
+        self.assertEqual(result.score, 0.95)
+        self.assertEqual(result.classification, "Ester hydrolysis")
 
     def test_solved_miss(self):
-        self.assertIsNone(self.cache.get_solved("NONEXISTENT"))
-
-
-@unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
-class TestBulkOperations(unittest.TestCase):
-
-    def setUp(self):
-        self.fake_redis = fakeredis.FakeRedis(decode_responses=True)
-        self.cache = _create_cache(self.fake_redis)
-
-    def test_get_cache_multi(self):
-        self.cache.set_cache("KEY1", 1, 0.9)
-        self.cache.set_cache("KEY2", 2, 0.8)
-        result = self.cache.get_cache_multi(["KEY1", "KEY2", "KEY3"])
-        self.assertEqual(result["KEY1"], (1, 0.9))
-        self.assertEqual(result["KEY2"], (2, 0.8))
-        self.assertIsNone(result["KEY3"])
-
-    def test_get_cache_multi_empty(self):
-        self.assertEqual(self.cache.get_cache_multi([]), {})
+        self.assertFalse(self.cache.get_solved("NONEXISTENT").exists)
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -227,8 +212,9 @@ class TestConfigIsolation(unittest.TestCase):
         cache2 = _create_cache(fake_redis, fp2, ep2, st2)
 
         cache1.set_cache("SHARED_KEY", 1, 0.9)
-        self.assertIsNone(cache2.get_cache("SHARED_KEY"))
-        self.assertEqual(cache1.get_cache("SHARED_KEY"), (1, 0.9))
+        self.assertFalse(cache2.get_cache("SHARED_KEY").exists)
+        result = cache1.get_cache("SHARED_KEY")
+        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.9, False))
 
 
 @unittest.skipUnless(HAS_FAKEREDIS, "fakeredis not installed")
@@ -246,10 +232,10 @@ class TestNamespaceIsolation(unittest.TestCase):
         scaffold = _create_cache(fake_redis, namespace="scaffold:abc123")
 
         reactants = [MockTreeMolecule("CCO")]
-        scaffold.set_solved("ROOT", reactants, 1.0, "Context terminal")
+        scaffold.set_solved("ROOT", reactants, 1.0, "Context terminal", start_time=0.0)
 
-        self.assertIsNone(standard.get_solved("ROOT"))
-        self.assertIsNotNone(scaffold.get_solved("ROOT"))
+        self.assertFalse(standard.get_solved("ROOT").exists)
+        self.assertTrue(scaffold.get_solved("ROOT").exists)
 
     def test_distinct_scaffolds_do_not_share_solved(self):
         fake_redis = fakeredis.FakeRedis(decode_responses=True)
@@ -257,8 +243,9 @@ class TestNamespaceIsolation(unittest.TestCase):
         scaffold_b = _create_cache(fake_redis, namespace="scaffold:bbb")
 
         scaffold_a.set_cache("KEY", 1, 0.9)
-        self.assertIsNone(scaffold_b.get_cache("KEY"))
-        self.assertEqual(scaffold_a.get_cache("KEY"), (1, 0.9))
+        self.assertFalse(scaffold_b.get_cache("KEY").exists)
+        result = scaffold_a.get_cache("KEY")
+        self.assertEqual((result.depth, result.score, result.resolved), (1, 0.9, False))
 
 
 if __name__ == "__main__":

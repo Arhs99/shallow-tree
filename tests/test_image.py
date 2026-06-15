@@ -14,7 +14,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import json
 import unittest
 
-from shallowtree.chem.mol import Molecule
+from shallowtree.chem.molecules.molecule import Molecule
 from shallowtree.utils.image import (
     flat_route_to_dict,
     molecule_to_image,
