@@ -118,7 +118,7 @@ class RedisCache:
         key = self._make_key("cache", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return RedisDataDTO(inchi_key=inchi_key)
+            return RedisDataDTO(inchi_key=inchi_key, exists=True)
         parsed = json.loads(data)
         dto = RedisDataDTO(inchi_key=inchi_key, exists=True, **parsed)
         return dto
@@ -149,7 +149,7 @@ class RedisCache:
         key = self._make_key("solved", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return RedisResolvedDataDTO(inchi_key=inchi_key)
+            return RedisResolvedDataDTO(inchi_key=inchi_key, exists=True)
         parsed = json.loads(data)
         # Reconstruct TreeMolecule objects from SMILES
         reactants = [
