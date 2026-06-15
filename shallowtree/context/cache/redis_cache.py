@@ -156,7 +156,7 @@ class RedisCache:
             TreeMolecule(parent=None, smiles=smi)
             for smi in parsed["reactants_smiles"]
         ]
-        return RedisResolvedDataDTO(inchi_key=inchi_key, reactants=reactants, **parsed, exists=True)#(reactants, parsed["score"], parsed["classification"])
+        return RedisResolvedDataDTO(inchi_key=inchi_key, reactants=reactants, **parsed, exists=True)
 
     def set_solved(self, inchi_key: str, reactants: List[TreeMolecule], score: float, classification: str, start_time) -> None:
         """Store solved route data for a molecule.
