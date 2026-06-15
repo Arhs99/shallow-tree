@@ -8,6 +8,8 @@ import time
 from typing import TYPE_CHECKING
 
 from shallowtree.configs.cache_configuration import CacheConfiguration
+from shallowtree.context.cache.redis_data_dto import RedisDataDTO
+from shallowtree.context.cache.redis_resolved_data_dto import RedisResolvedDataDTO
 
 from shallowtree.context.policy.filter_policy import FilterPolicy
 
@@ -102,7 +104,7 @@ class RedisCache:
         """
         return f"shallowtree:{self._config_hash}:{self._namespace}:{key_type}:{inchi_key}"
 
-    def get_cache(self, inchi_key: str) -> Optional[Tuple[int, float, bool]]:
+    def get_cache(self, inchi_key: str) -> RedisDataDTO:
         """Get cached depth, score and resolved flag for a molecule.
 
         Args:
@@ -116,9 +118,10 @@ class RedisCache:
         key = self._make_key("cache", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return None
+            return RedisDataDTO(inchi_key=inchi_key)
         parsed = json.loads(data)
-        return (parsed["depth"], parsed["score"], parsed.get("resolved", False))
+        dto = RedisDataDTO(inchi_key=inchi_key, exists=True, **parsed)
+        return dto
 
     def set_cache(self, inchi_key: str, depth: int, score: float, resolved: bool = False) -> None:
         """Store depth, score and resolved flag for a molecule.
@@ -130,12 +133,10 @@ class RedisCache:
             resolved: Whether the route bottoms out entirely in stock.
         """
         key = self._make_key("cache", inchi_key)
-        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "ts": int(time.time())})
+        data = json.dumps({"depth": depth, "score": score, "resolved": resolved, "time_seconds": int(time.time())})
         self._client.set(key, data)
 
-    def get_solved(
-        self, inchi_key: str
-    ) -> Optional[Tuple[List[TreeMolecule], float, str]]:
+    def get_solved(self, inchi_key: str) -> RedisResolvedDataDTO:
         """Get solved route data for a molecule.
 
         Args:
@@ -148,22 +149,16 @@ class RedisCache:
         key = self._make_key("solved", inchi_key)
         data = self._client.get(key)
         if data is None:
-            return None
+            return RedisResolvedDataDTO(inchi_key=inchi_key)
         parsed = json.loads(data)
         # Reconstruct TreeMolecule objects from SMILES
         reactants = [
             TreeMolecule(parent=None, smiles=smi)
             for smi in parsed["reactants_smiles"]
         ]
-        return (reactants, parsed["score"], parsed["classification"])
+        return RedisResolvedDataDTO(inchi_key=inchi_key, reactants=reactants, **parsed, exists=True)#(reactants, parsed["score"], parsed["classification"])
 
-    def set_solved(
-        self,
-        inchi_key: str,
-        reactants: List[TreeMolecule],
-        score: float,
-        classification: str,
-    ) -> None:
+    def set_solved(self, inchi_key: str, reactants: List[TreeMolecule], score: float, classification: str, start_time) -> None:
         """Store solved route data for a molecule.
 
         Args:
@@ -172,15 +167,17 @@ class RedisCache:
             score: Synthesis feasibility score.
             classification: Reaction classification string.
         """
+        delta_time = time.time() - start_time
         key = self._make_key("solved", inchi_key)
         data = json.dumps({
             "reactants_smiles": [mol.smiles for mol in reactants],
             "score": score,
             "classification": classification,
-            "ts": int(time.time()),
+            "time_seconds": int(delta_time),
         })
         self._client.set(key, data)
 
+    #TODO: see if we need this
     def get_cache_multi(
         self, inchi_keys: List[str]
     ) -> Dict[str, Optional[Tuple[int, float, bool]]]:
