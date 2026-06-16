@@ -150,8 +150,11 @@ class BaseTreeSearch(abc.ABC):
         # resolves within ``cached_budget`` steps holds for any larger budget; a
         # proof that it does NOT resolve within ``cached_budget`` steps holds for
         # any smaller budget. Recompute otherwise (a True needs a smaller-or-equal
-        # budget proof, a False a larger-or-equal one), so overwriting the entry
-        # only ever tightens it.
+        # budget proof, a False a larger-or-equal one). With a single writer
+        # overwriting only ever tightens the entry; under CONCURRENT Redis writers
+        # (parallel IDDFS) last-write-wins can loosen it instead, costing a
+        # redundant recompute — never a wrong verdict, since each value read is
+        # individually sound under this rule.
         if cached_resolved:
             return budget_now >= cached_budget
         return budget_now <= cached_budget

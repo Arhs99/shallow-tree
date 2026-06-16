@@ -25,6 +25,7 @@ from rdkit import Chem
 from shallowtree.configs.input_configuration import InputConfiguration
 from shallowtree.interfaces.execution_modes import (
     iterative_deepening_search,
+    parallel_iterative_deepening_search,
     parallel_search,
     sequential_search,
 )
@@ -48,8 +49,10 @@ def main():
     input_config = InputConfiguration(**config_dict)
 
     if input_config.iterative_deepening:
-        # Sequential-only in v1; parallel iterative deepening is a follow-up.
-        df = iterative_deepening_search(input_config)
+        if input_config.parallel_processes > 1:
+            df = parallel_iterative_deepening_search(input_config)
+        else:
+            df = iterative_deepening_search(input_config)
     elif input_config.parallel_processes == 1:
         df = sequential_search(input_config)
     else:
