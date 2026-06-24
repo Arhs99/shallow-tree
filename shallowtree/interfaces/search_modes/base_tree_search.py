@@ -119,7 +119,7 @@ class BaseTreeSearch(abc.ABC):
         self._update_cache(mol, budget, best_score, False)
         return best_score, False
 
-    def search_iterative(self, smiles: List[str], d_start: int, d_max: int):
+    def search_iterative(self, smiles: List[str]):
         # Iterative-deepening DFS: per target, sweep max_depth from d_start up to
         # d_max on ONE warm instance and stop at the first resolved depth. Reuses
         # the mode-specific reconstruction by calling self.search([smi]) at each
@@ -131,7 +131,7 @@ class BaseTreeSearch(abc.ABC):
         for smi in smiles:
             resolved_depth = None
             row = None
-            for d in range(d_start, d_max + 1):
+            for d in range(self._input_config.d_start, self._input_config.d_max + 1):
                 self._input_config.depth = d
                 row = self.search([smi]).iloc[0].to_dict()
                 if row.get('resolved'):
@@ -160,7 +160,7 @@ class BaseTreeSearch(abc.ABC):
         return budget_now <= cached_budget
 
     @abstractmethod
-    def search(self, *args, **kwargs) -> List:
+    def search(self, *args, **kwargs) -> pd.DataFrame:
         pass
 
     @abstractmethod

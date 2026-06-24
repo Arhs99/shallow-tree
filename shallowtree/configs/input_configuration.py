@@ -16,4 +16,4 @@ class InputConfiguration:
     # report the minimal resolving depth per target (d_max defaults to ``depth``).
     iterative_deepening: bool = False
     d_start: int = 2
-    d_max: Optional[int] = None
+    d_max: int = 2
