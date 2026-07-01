@@ -43,7 +43,6 @@ class ScaffoldSearch(BaseTreeSearch):
                     {'SMILES': smi, 'score': 0, 'resolved': False, 'route': dict(solution), 'BBs': building_blocks,
                      'search_duration': 'Exceeded'})
             self.solved = {}
-            self.cache = {}
 
         df = pd.DataFrame(rows)
         return df
