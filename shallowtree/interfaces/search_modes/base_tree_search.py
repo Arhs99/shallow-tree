@@ -137,7 +137,7 @@ class BaseTreeSearch(abc.ABC):
             row = None
             for d in range(self._input_config.d_start, self._input_config.d_max + 1):
                 self._input_config.depth = d
-                row = self.search([smi]).iloc[0].to_dict()
+                row = self.search([smi], clear=False).iloc[0].to_dict()
                 if row.get('resolved'):
                     resolved_depth = d
                     break
@@ -146,6 +146,8 @@ class BaseTreeSearch(abc.ABC):
                 continue
             row['resolved_depth'] = resolved_depth
             rows.append(row)
+            self.cache = {}
+            self.solved = {}
         return pd.DataFrame(rows)
 
     @staticmethod

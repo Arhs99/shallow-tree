@@ -12,7 +12,7 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class ScaffoldSearch(BaseTreeSearch):
 
-    def search(self, smiles: List[str]) -> pd.DataFrame:
+    def search(self, smiles: List[str], clear: bool = True) -> pd.DataFrame:
         scaffold_str = self._input_config.scaffold
         rows = []
         context_scaffold = self._parse_scaffold_query(scaffold_str)
@@ -42,7 +42,9 @@ class ScaffoldSearch(BaseTreeSearch):
                 rows.append(
                     {'SMILES': smi, 'score': 0, 'resolved': False, 'route': dict(solution), 'BBs': building_blocks,
                      'search_duration': 'Exceeded'})
-            self.solved = {}
+            if clear:
+                self.solved = {}
+                self.cache = {}
 
         df = pd.DataFrame(rows)
         return df

@@ -14,7 +14,7 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class StandardSearch(BaseTreeSearch):
 
-    def search(self, smiles: List[str]) -> pd.DataFrame:
+    def search(self, smiles: List[str], clear: bool = True) -> pd.DataFrame:
         rows = []
         for smi in smiles:
             start_time = time.time()
@@ -30,7 +30,9 @@ class StandardSearch(BaseTreeSearch):
                 rows.append(
                     {'SMILES': smi, 'score': 0, 'resolved': False, 'route': dict(solution), 'BBs': building_blocks,
                      'search_duration': 'Exceeded'})
-            self.solved = {}
+            if clear:
+                self.solved = {}
+                self.cache = {}
 
         df = pd.DataFrame(rows)
         return df
