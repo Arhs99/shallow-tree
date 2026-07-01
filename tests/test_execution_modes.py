@@ -96,7 +96,7 @@ class TestExecutionModes(unittest.TestCase):
         df_result = parallel_iterative_deepening_search(self.standard_config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
-        print(df_result["search_duration"])
+        print(df_result)
         self.assertListEqual(expected, result)
         self.assertListEqual(expected_scores, scores)
 
