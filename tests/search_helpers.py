@@ -30,6 +30,7 @@ def _make_search(cls=StandardSearch, scaffold=None, **overrides):
 
         mock_app = MagicMock()
         mock_app.search.score_acceptance_threshold = 0.9
+        mock_app.search.time_limit = 10**9
         mock_app_cls.return_value = mock_app
 
         mock_stock = MagicMock()

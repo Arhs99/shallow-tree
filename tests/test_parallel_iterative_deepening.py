@@ -45,9 +45,6 @@ class TestRunOneTargetSentinel(unittest.TestCase):
         self.addCleanup(em._WORKER.clear)
 
     def _seed_worker(self, search):
-        # Pre-seed the warm instance so _run_one_target skips the (heavy) rebuild
-        # branch: matching shm_name means "already built in this worker".
-        em._WORKER["shm_name"] = "shm"
         em._WORKER["search"] = search
 
     def test_success_row_carries_error_none(self):
@@ -57,17 +54,21 @@ class TestRunOneTargetSentinel(unittest.TestCase):
             "BBs": ["CCO"], "resolved_depth": 2,
         }])
         self._seed_worker(search)
-        row = em._run_one_target(("CCO", "shm", 5, None, 2, 4))
+        cfg = InputConfiguration(app_configuration_path="x.json", output_path="",
+                                 smiles=["CCO"])
+        row = em._run_one_target(cfg)
         self.assertTrue(row["resolved"])
         self.assertEqual(row["resolved_depth"], 2)
         self.assertIsNone(row["error"])
-        search.search_iterative.assert_called_once_with(["CCO"], 2, 4)
+        search.search_iterative.assert_called_once_with(["CCO"])
 
     def test_throwing_target_returns_uniform_sentinel(self):
         search = MagicMock()
         search.search_iterative.side_effect = RuntimeError("boom")
         self._seed_worker(search)
-        row = em._run_one_target(("BAD", "shm", 5, None, 2, 4))
+        cfg = InputConfiguration(app_configuration_path="x.json", output_path="",
+                                 smiles=["BAD"])
+        row = em._run_one_target(cfg)
         # Same columns a normal row carries, so pd.concat never NaN-pads.
         self.assertEqual(set(row), {"SMILES", "score", "resolved", "route",
                                     "BBs", "resolved_depth", "error"})
@@ -88,7 +89,7 @@ class TestParallelOrchestration(unittest.TestCase):
         dispatched = []
 
         def fake_target(task):
-            smi = task[0]
+            smi = task.smiles[0]
             dispatched.append(smi)
             return {"SMILES": smi, "score": 1.0, "resolved": True, "route": {},
                     "BBs": [], "resolved_depth": 2, "error": None}
@@ -107,6 +108,7 @@ class TestParallelOrchestration(unittest.TestCase):
         with patch(f"{_EM}.Configuration.from_json", return_value={}), \
              patch(f"{_EM}.ApplicationConfiguration") as app_cls, \
              patch(f"{_EM}._build_shared_stock", return_value=shared), \
+             patch(f"{_EM}._build_worker_stock", return_value=None), \
              patch(f"{_EM}.ProcessPool", return_value=pool), \
              patch(f"{_EM}._run_one_target", side_effect=fake_target):
             app_cls.return_value = MagicMock()
@@ -129,8 +131,8 @@ class TestParallelOrchestration(unittest.TestCase):
         dispatched = []
 
         def fake_target(task):
-            dispatched.append(task[0])
-            return {"SMILES": task[0], "score": 1.0, "resolved": True, "route": {},
+            dispatched.append(task.smiles[0])
+            return {"SMILES": task.smiles[0], "score": 1.0, "resolved": True, "route": {},
                     "BBs": [], "resolved_depth": 2, "error": None}
 
         shared = MagicMock(); shared.shm_name = "shm"; shared.__len__.return_value = 5
@@ -141,6 +143,7 @@ class TestParallelOrchestration(unittest.TestCase):
         with patch(f"{_EM}.Configuration.from_json", return_value={}), \
              patch(f"{_EM}.ApplicationConfiguration", return_value=MagicMock()), \
              patch(f"{_EM}._build_shared_stock", return_value=shared), \
+             patch(f"{_EM}._build_worker_stock", return_value=None), \
              patch(f"{_EM}.ProcessPool", return_value=pool), \
              patch(f"{_EM}._run_one_target", side_effect=fake_target):
             df = em.parallel_iterative_deepening_search(cfg)
