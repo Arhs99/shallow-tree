@@ -37,6 +37,9 @@ class ScaffoldSearch(BaseTreeSearch):
             feasible_actions = self._determine_feasible_actions(mol)
             score, resolved = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
             rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time, context_scaffold, context_scaffold_stripped)
+            self.solved = {}
+            self.cache = {}
+
         df = pd.DataFrame(rows)
         return df
 

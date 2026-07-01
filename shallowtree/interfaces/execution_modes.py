@@ -112,17 +112,6 @@ def iterative_deepening_search(input_config: InputConfiguration):
     return df
 
 
-# Per-worker warm state for parallel iterative deepening. Populated lazily INSIDE
-# each worker process on its first task and reused across the targets that worker
-# pulls, so the ONNX models load once per worker and self.cache/self.solved stay
-# warm across targets. Keyed by shm_name: pathos reuses worker processes across
-# pool invocations, so a new run (new shared-stock block => new shm_name) must
-# rebuild the instance against the new stock — keying on shm_name makes that
-# self-correcting. The parent NEVER touches this dict (fork hygiene: no TreeSearch
-# in the parent before fork).
-_WORKER: dict = {}
-
-
 def _heavy_atom_count(smiles: str) -> int:
     """Cheap per-target cost proxy for longest-first scheduling. Unparseable
     SMILES sort last (count 0); input.py canonicalizes upstream so this is rare."""
@@ -130,10 +119,18 @@ def _heavy_atom_count(smiles: str) -> int:
     return mol.GetNumHeavyAtoms() if mol is not None else 0
 
 
+_WORKER: dict = {}
+
+
 def _run_one_target(worker_config):
     # Build (or rebuild on a new run) the warm search instance strictly here, in
     # the worker, never in the parent.
-    search = _WORKER["search"]
+    try:
+        search = _WORKER["search"]
+    except:
+        search = TreeSearch(worker_config)
+        _WORKER["search"] = search
+
     try:
         row = search.search_iterative(worker_config.smiles).iloc[0].to_dict()
         row["error"] = None
@@ -153,8 +150,6 @@ def parallel_iterative_deepening_search(input_config: InputConfiguration):
     stock = _build_worker_stock(shm_name, shm_count)
     input_config.prebuilt_stock = stock
 
-    search = TreeSearch(input_config)
-    _WORKER["search"] = search
 
     smiles = input_config.smiles
     # Longest-first dispatch (LPT): start the costliest sweeps at t=0 so the

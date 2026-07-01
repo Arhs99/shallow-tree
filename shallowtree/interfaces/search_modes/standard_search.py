@@ -25,6 +25,8 @@ class StandardSearch(BaseTreeSearch):
             self._load_from_redis(mol)
             score, resolved = self.req_search_tree(mol, depth=0)
             rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time)
+            self.solved = {}
+            self.cache = {}
 
         df = pd.DataFrame(rows)
         return df
