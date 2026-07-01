@@ -1,5 +1,6 @@
 import abc
 import hashlib
+import time
 from abc import abstractmethod
 from pathlib import Path
 from typing import List, Tuple
@@ -47,7 +48,12 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset(), start_time=None) -> Tuple[float, bool]:
+        if start_time is None:
+            start_time = time.time()
+        delta = time.time() - start_time
+        if self.app_config.search.time_limit < delta:
+            raise TimeoutError("Search exceeded the allocated time.")
         # Returns (score, resolved). ``score`` is the soft recursive feasibility
         # average, kept as a ranking signal; ``resolved`` is True only when every
         # leaf of the chosen route is in stock. A route is committed to self.solved
@@ -107,7 +113,7 @@ class BaseTreeSearch(abc.ABC):
         best_score = 0.0
         for action in feasible_actions:
             reactants = action.reactants[0]
-            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}) for x in reactants]
+            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}, start_time) for x in reactants]
             score = sum(s for s, _ in child_results) / len(reactants)
             if all(resolved for _, resolved in child_results):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
@@ -119,7 +125,7 @@ class BaseTreeSearch(abc.ABC):
         self._update_cache(mol, budget, best_score, False)
         return best_score, False
 
-    def search_iterative(self, smiles: List[str], d_start: int, d_max: int):
+    def search_iterative(self, smiles: List[str]):
         # Iterative-deepening DFS: per target, sweep max_depth from d_start up to
         # d_max on ONE warm instance and stop at the first resolved depth. Reuses
         # the mode-specific reconstruction by calling self.search([smi]) at each
@@ -131,9 +137,9 @@ class BaseTreeSearch(abc.ABC):
         for smi in smiles:
             resolved_depth = None
             row = None
-            for d in range(d_start, d_max + 1):
+            for d in range(self._input_config.d_start, self._input_config.d_max + 1):
                 self._input_config.depth = d
-                row = self.search([smi]).iloc[0].to_dict()
+                row = self.search([smi], clear=False).iloc[0].to_dict()
                 if row.get('resolved'):
                     resolved_depth = d
                     break
@@ -142,6 +148,8 @@ class BaseTreeSearch(abc.ABC):
                 continue
             row['resolved_depth'] = resolved_depth
             rows.append(row)
+            self.cache = {}
+            self.solved = {}
         return pd.DataFrame(rows)
 
     @staticmethod
@@ -160,7 +168,7 @@ class BaseTreeSearch(abc.ABC):
         return budget_now <= cached_budget
 
     @abstractmethod
-    def search(self, *args, **kwargs) -> List:
+    def search(self, *args, **kwargs) -> pd.DataFrame:
         pass
 
     @abstractmethod

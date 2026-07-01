@@ -14,7 +14,7 @@ from shallowtree.interfaces.search_modes.base_tree_search import BaseTreeSearch
 
 class StandardSearch(BaseTreeSearch):
 
-    def search(self, smiles: List[str]) -> pd.DataFrame:
+    def search(self, smiles: List[str], clear: bool = True) -> pd.DataFrame:
         rows = []
         for smi in smiles:
             start_time = time.time()
@@ -23,8 +23,16 @@ class StandardSearch(BaseTreeSearch):
             building_blocks = []
 
             self._load_from_redis(mol)
-            score, resolved = self.req_search_tree(mol, depth=0)
-            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time)
+            try:
+                score, resolved = self.req_search_tree(mol, depth=0, start_time=start_time)
+                rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time)
+            except TimeoutError:
+                rows.append(
+                    {'SMILES': smi, 'score': 0, 'resolved': False, 'route': dict(solution), 'BBs': building_blocks,
+                     'search_duration': 'Exceeded'})
+            if clear:
+                self.solved = {}
+                self.cache = {}
 
         df = pd.DataFrame(rows)
         return df
@@ -75,6 +83,8 @@ class StandardSearch(BaseTreeSearch):
         if resolved:
             resolved = self.best_route(mol, 0, tree, building_blocks)
             self._save_to_redis(start_time)  # Persist to Redis if available and successful
-        rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks})
+        delta = time.time() - start_time
+        rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks,
+                     'search_duration': str(delta)})
         return rows
 

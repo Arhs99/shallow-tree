@@ -28,7 +28,9 @@ class TestSearchIterativeDriver(unittest.TestCase):
             _row_df(False, 0.3), _row_df(False, 0.6), _row_df(True, 1.0),
             _row_df(True, 1.0),
         ])
-        df = exp.search_iterative(["X"], d_start=2, d_max=10)
+        exp._input_config.d_start = 2
+        exp._input_config.d_max = 10
+        df = exp.search_iterative(["X"])
         self.assertEqual(exp.search.call_count, 3)  # 2, 3, 4 then stop
         self.assertEqual(df.iloc[0]["resolved_depth"], 4)
         self.assertTrue(bool(df.iloc[0]["resolved"]))
@@ -38,7 +40,9 @@ class TestSearchIterativeDriver(unittest.TestCase):
     def test_returns_none_when_unresolved_within_d_max(self):
         exp = _make_search()
         exp.search = MagicMock(side_effect=[_row_df(False, 0.1) for _ in range(4)])
-        df = exp.search_iterative(["X"], d_start=2, d_max=5)
+        exp._input_config.d_start = 2
+        exp._input_config.d_max = 5
+        df = exp.search_iterative(["X"])
         self.assertEqual(exp.search.call_count, 4)  # 2, 3, 4, 5
         self.assertIsNone(df.iloc[0]["resolved_depth"])
         self.assertFalse(bool(df.iloc[0]["resolved"]))
@@ -47,7 +51,9 @@ class TestSearchIterativeDriver(unittest.TestCase):
     def test_resolves_on_first_depth(self):
         exp = _make_search()
         exp.search = MagicMock(side_effect=[_row_df(True, 1.0)])
-        df = exp.search_iterative(["X"], d_start=2, d_max=10)
+        exp._input_config.d_start = 2
+        exp._input_config.d_max = 10
+        df = exp.search_iterative(["X"])
         self.assertEqual(exp.search.call_count, 1)
         self.assertEqual(df.iloc[0]["resolved_depth"], 2)
 
@@ -58,7 +64,9 @@ class TestSearchIterativeDriver(unittest.TestCase):
             _row_df(True, 1.0),                       # t1 @ d=2
             _row_df(False, 0.4), _row_df(True, 1.0),  # t2 @ d=2, d=3
         ])
-        df = exp.search_iterative(["A", "B"], d_start=2, d_max=5)
+        exp._input_config.d_start = 2
+        exp._input_config.d_max = 5
+        df = exp.search_iterative(["A", "B"])
         self.assertEqual(list(df["resolved_depth"]), [2, 3])
 
 
@@ -102,7 +110,9 @@ class TestSearchIterativeEndToEnd(unittest.TestCase):
 
     def test_finds_minimal_resolving_depth(self):
         exp, M, _ = self._scenario()
-        df = exp.search_iterative([M.smiles], d_start=1, d_max=4)
+        exp._input_config.d_start = 1
+        exp._input_config.d_max = 4
+        df = exp.search_iterative([M.smiles])
         self.assertEqual(df.iloc[0]["resolved_depth"], 2)
         self.assertTrue(bool(df.iloc[0]["resolved"]))
 
@@ -110,7 +120,9 @@ class TestSearchIterativeEndToEnd(unittest.TestCase):
         # Stock molecules short-circuit before expansion; only M and B are ever
         # expanded across the whole sweep — no redundant work on settled leaves.
         exp, M, B = self._scenario()
-        exp.search_iterative([M.smiles], d_start=1, d_max=4)
+        exp._input_config.d_start = 1
+        exp._input_config.d_max = 4
+        exp.search_iterative([M.smiles])
         expanded = {call.args[0][0].inchi_key for call in exp.rules_expansion.get_actions.call_args_list}
         self.assertEqual(expanded, {M.inchi_key, B.inchi_key})
 
