@@ -49,6 +49,8 @@ class BaseTreeSearch(abc.ABC):
         self.solved = dict()
 
     def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset(), start_time=None) -> Tuple[float, bool]:
+        if start_time is None:
+            start_time = time.time()
         delta = time.time() - start_time
         if self.app_config.search.time_limit < delta:
             raise TimeoutError("Search exceeded the allocated time.")
