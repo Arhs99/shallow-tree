@@ -35,8 +35,13 @@ class ScaffoldSearch(BaseTreeSearch):
             # Pre-populate from Redis if available
             self._load_from_redis(mol)
             feasible_actions = self._determine_feasible_actions(mol)
-            score, resolved = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info)
-            rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time, context_scaffold, context_scaffold_stripped)
+            try:
+                score, resolved = self._solve_and_score_routes(mol, context_scaffold, feasible_actions, wildcard_info, start_time)
+                rows = self._update(mol, smi, score, resolved, solution, rows, building_blocks, start_time, context_scaffold, context_scaffold_stripped)
+            except TimeoutError:
+                rows.append(
+                    {'SMILES': smi, 'score': 0, 'resolved': False, 'route': dict(solution), 'BBs': building_blocks,
+                     'search_duration': 'Exceeded'})
             self.solved = {}
             self.cache = {}
 
@@ -156,7 +161,7 @@ class ScaffoldSearch(BaseTreeSearch):
         return wildcard_mapping, scaffold_stripped
 
     def _solve_and_score_routes(self, mol: TreeMolecule, scaffold, feasible_actions: List,
-                                wildcard_info=None) -> Tuple[float, bool]:
+                                wildcard_info, start_time) -> Tuple[float, bool]:
         score = 0
         resolved = False
         root_hit = mol.rd_mol.GetSubstructMatch(scaffold)
@@ -181,7 +186,7 @@ class ScaffoldSearch(BaseTreeSearch):
             # from both scoring and resolution (it carries the context scaffold, not a
             # stock building block). "Resolved" therefore means every OTHER reactant
             # bottoms out in stock.
-            child_results = [self.req_search_tree(x, 1, frozenset({mol.inchi_key})) for x in reactants if x != chosen]
+            child_results = [self.req_search_tree(x, 1, frozenset({mol.inchi_key}), start_time=start_time) for x in reactants if x != chosen]
             score = sum(s for s, _ in child_results) / (len(reactants) - 1)
             if all(g for _, g in child_results):
                 # Last resolved disconnection wins (preserves the pre-existing
@@ -199,7 +204,9 @@ class ScaffoldSearch(BaseTreeSearch):
         if resolved:
             resolved = self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
             self._save_to_redis(start_time)  # Persist to Redis if available and successful
-        rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks})
+        delta = time.time() - start_time
+        rows.append({'SMILES': smi, 'score': score, 'resolved': resolved, 'route': dict(tree), 'BBs': building_blocks,
+                     'search_duration': str(delta)})
         return rows
 
     def _matches_context_scaffold(self, mol: TreeMolecule, context_scaffold: Mol, context_scaffold_stripped: Mol) -> bool:

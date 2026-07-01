@@ -1,5 +1,6 @@
 import abc
 import hashlib
+import time
 from abc import abstractmethod
 from pathlib import Path
 from typing import List, Tuple
@@ -47,7 +48,10 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset(), start_time=None) -> Tuple[float, bool]:
+        delta = time.time() - start_time
+        if self.app_config.search.time_limit < delta:
+            raise TimeoutError("Search exceeded the allocated time.")
         # Returns (score, resolved). ``score`` is the soft recursive feasibility
         # average, kept as a ranking signal; ``resolved`` is True only when every
         # leaf of the chosen route is in stock. A route is committed to self.solved
@@ -107,7 +111,7 @@ class BaseTreeSearch(abc.ABC):
         best_score = 0.0
         for action in feasible_actions:
             reactants = action.reactants[0]
-            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}) for x in reactants]
+            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}, start_time) for x in reactants]
             score = sum(s for s, _ in child_results) / len(reactants)
             if all(resolved for _, resolved in child_results):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])

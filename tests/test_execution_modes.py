@@ -42,10 +42,6 @@ class TestExecutionModes(unittest.TestCase):
                                          scaffold="[*]c1n[nH]c2cc(-c3ccccc3)ccc12",
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3,
                                                   d_max=2)
-        self.iterative_config = InputConfiguration(app_configuration_path=config_path,
-                                                  scaffold=None,
-                                                  routes=True, depth=2, smiles=smiles, output_path="",
-                                                  parallel_processes=2, d_max=2)
 
     def test_parallel_standard_search(self):
         # expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
@@ -100,7 +96,7 @@ class TestExecutionModes(unittest.TestCase):
         df_result = parallel_iterative_deepening_search(self.standard_config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
-        print(df_result)
+        print(df_result["search_duration"])
         self.assertListEqual(expected, result)
         self.assertListEqual(expected_scores, scores)
 
