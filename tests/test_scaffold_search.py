@@ -103,7 +103,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp._input_config.depth = 1
-        df = exp.search([smi])
+        df = exp.search([smi], clear=False)
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -135,7 +135,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp._input_config.depth = 1
-        df = exp.search([smi])
+        df = exp.search([smi], clear=False)
         self.assertEqual(df.iloc[0]['score'], 0.0)
         self.assertNotIn(parent.inchi_key, exp.solved)
 
@@ -165,7 +165,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp._input_config.depth = 1
-        df = exp.search([smi])
+        df = exp.search([smi], clear=False)
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
@@ -195,7 +195,7 @@ class TestScaffoldBestRoute(unittest.TestCase):
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
         exp._input_config.depth = 1
-        df = exp.search([smi])
+        df = exp.search([smi], clear=False)
         self.assertGreater(df.iloc[0]['score'], 0.9)
         self.assertIn(parent.inchi_key, exp.solved)
 
