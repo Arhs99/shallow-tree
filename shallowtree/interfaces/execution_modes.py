@@ -45,54 +45,7 @@ def _build_worker_stock(shm_name: str, shm_count: int) -> Stock:
     return stock
 
 
-def parallel_search(input_config: InputConfiguration):
-    config_dict = Configuration.from_json(input_config.app_configuration_path)
-    app_config = ApplicationConfiguration(**config_dict)
-    smiles = [input_config.smiles[i:i + input_config.parallel_processes]
-              for i in range(0, len(input_config.smiles), input_config.parallel_processes)]
-    input_configs = [clone_config(input_config, s) for s in smiles]
-
-    shared = _build_shared_stock(app_config.stock)
-    shm_name, shm_count = shared.shm_name, len(shared)
-
-    def parallel_run(input_c: InputConfiguration):
-        stock = _build_worker_stock(shm_name, shm_count)
-        input_c.prebuilt_stock = stock
-
-        search = TreeSearch(input_c)
-        df = search.search(input_c.smiles)
-
-        if not input_c.routes:
-            df = df.drop(columns=['route'])
-        return df
-
-    try:
-        pool = ProcessPool(nodes=input_config.parallel_processes)
-        results = pool.map(parallel_run, input_configs)
-        concatenated = pd.concat(results)
-        return concatenated
-    finally:
-        shared.unlink()
-
-
-def sequential_search(input_config: InputConfiguration):
-    config_dict = Configuration.from_json(input_config.app_configuration_path)
-    app_config = ApplicationConfiguration(**config_dict)
-
-    shared = _build_shared_stock(app_config.stock)
-    shm_name, shm_count = shared.shm_name, len(shared)
-    stock = _build_worker_stock(shm_name, shm_count)
-    input_config.prebuilt_stock = stock
-
-    search = TreeSearch(input_config)
-    df = search.search(input_config.smiles)
-
-    if not input_config.routes:
-        df = df.drop(columns=['route'])
-    return df
-
-
-def iterative_deepening_search(input_config: InputConfiguration):
+def constrained_breadth_first_search(input_config: InputConfiguration):
     # Sequential iterative-deepening: build the stock once, then per target sweep
     # max_depth from d_start to d_max (defaults to ``depth``) on one warm search
     # instance, reporting the minimal resolving depth. Mirrors sequential_search.
@@ -113,8 +66,6 @@ def iterative_deepening_search(input_config: InputConfiguration):
 
 
 def _heavy_atom_count(smiles: str) -> int:
-    """Cheap per-target cost proxy for longest-first scheduling. Unparseable
-    SMILES sort last (count 0); input.py canonicalizes upstream so this is rare."""
     mol = Chem.MolFromSmiles(smiles)
     return mol.GetNumHeavyAtoms() if mol is not None else 0
 
@@ -140,8 +91,7 @@ def _run_one_target(worker_config):
     return row
 
 
-def parallel_iterative_deepening_search(input_config: InputConfiguration):
-
+def parallel_constrained_breadth_first_search(input_config: InputConfiguration):
     config_dict = Configuration.from_json(input_config.app_configuration_path)
     app_config = ApplicationConfiguration(**config_dict)
 

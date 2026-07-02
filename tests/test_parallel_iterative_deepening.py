@@ -102,7 +102,7 @@ class TestParallelOrchestration(unittest.TestCase):
         pool.map.side_effect = lambda fn, tasks: [fn(t) for t in tasks]
 
         cfg = InputConfiguration(app_configuration_path="x.json", output_path="",
-                                 smiles=smiles, iterative_deepening=True,
+                                 smiles=smiles,
                                  parallel_processes=2, d_start=2, depth=3)
 
         with patch(f"{_EM}.Configuration.from_json", return_value={}), \
@@ -112,7 +112,7 @@ class TestParallelOrchestration(unittest.TestCase):
              patch(f"{_EM}.ProcessPool", return_value=pool), \
              patch(f"{_EM}._run_one_target", side_effect=fake_target):
             app_cls.return_value = MagicMock()
-            df = em.parallel_iterative_deepening_search(cfg)
+            df = em.parallel_constrained_breadth_first_search(cfg)
         return df, dispatched, shared
 
     def test_dispatch_is_longest_first_and_output_restores_input_order(self):
@@ -138,7 +138,7 @@ class TestParallelOrchestration(unittest.TestCase):
         shared = MagicMock(); shared.shm_name = "shm"; shared.__len__.return_value = 5
         pool = MagicMock(); pool.map.side_effect = lambda fn, tasks: [fn(t) for t in tasks]
         cfg = InputConfiguration(app_configuration_path="x.json", output_path="",
-                                 smiles=smiles, iterative_deepening=True,
+                                 smiles=smiles,
                                  parallel_processes=2, d_start=2, depth=3, routes=False)
         with patch(f"{_EM}.Configuration.from_json", return_value={}), \
              patch(f"{_EM}.ApplicationConfiguration", return_value=MagicMock()), \
@@ -146,7 +146,7 @@ class TestParallelOrchestration(unittest.TestCase):
              patch(f"{_EM}._build_worker_stock", return_value=None), \
              patch(f"{_EM}.ProcessPool", return_value=pool), \
              patch(f"{_EM}._run_one_target", side_effect=fake_target):
-            df = em.parallel_iterative_deepening_search(cfg)
+            df = em.parallel_constrained_breadth_first_search(cfg)
         self.assertNotIn("route", df.columns)
 
 
@@ -172,11 +172,11 @@ class TestParallelIddfsParity(unittest.TestCase):
         self.config = InputConfiguration(
             app_configuration_path=tmp.name, scaffold=None, routes=True,
             depth=3, smiles=self.smiles, output_path="",
-            iterative_deepening=True, d_start=2, d_max=3, parallel_processes=3)
+            d_start=2, d_max=3, parallel_processes=3)
 
     def test_parallel_matches_sequential(self):
-        seq = em.iterative_deepening_search(self.config).reset_index(drop=True)
-        par = em.parallel_iterative_deepening_search(self.config).reset_index(drop=True)
+        seq = em.constrained_breadth_first_search(self.config).reset_index(drop=True)
+        par = em.parallel_constrained_breadth_first_search(self.config).reset_index(drop=True)
 
         # Same targets, same order.
         self.assertEqual(par["SMILES"].tolist(), seq["SMILES"].tolist())

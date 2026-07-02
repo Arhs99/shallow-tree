@@ -198,10 +198,6 @@ class ScaffoldSearch(BaseTreeSearch):
 
     def _update(self, mol: TreeMolecule, smi: str, score: float, resolved: bool, tree: defaultdict, rows: List, building_blocks: List,
                 start_time: float, context_scaffold: Mol = None, context_scaffold_stripped: Mol = None) -> List:
-        # The gate drives the search toward resolved routes; re-validate against the
-        # actually reconstructed route so the reported ``resolved`` is honest (all
-        # non-scaffold leaves really in stock). The soft ``score`` is retained as a
-        # ranking signal.
         if resolved:
             resolved = self.best_route(mol, 0, tree, building_blocks, context_scaffold, context_scaffold_stripped)
             self._save_to_redis(start_time)  # Persist to Redis if available and successful
