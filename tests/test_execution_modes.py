@@ -3,11 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from shallowtree.configs.application_configuration import ApplicationConfiguration
 from shallowtree.configs.input_configuration import InputConfiguration
-from shallowtree.context.config import Configuration
-from shallowtree.interfaces.execution_modes import parallel_search, sequential_search, iterative_deepening_search, \
-    parallel_iterative_deepening_search
+from shallowtree.interfaces.execution_modes import parallel_constrained_breadth_first_search
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = REPO_ROOT / "application_config/config.json"
@@ -43,46 +40,10 @@ class TestExecutionModes(unittest.TestCase):
                                          routes=True, depth=2, smiles=smiles, output_path="", parallel_processes=3,
                                                   d_max=2)
 
-    def test_parallel_standard_search(self):
-        # expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
-        expected = [['Clc1ccccc1CBr', 'O=C1CC(O)C1', 'Nc1n[nH]c2cc(Br)ccc12', 'OB(O)c1ccccc1'], [], [],
-                    ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
-        expected_scores = [1.0, 0.9375, 0.875, 1.0, 0.5]
-        df_result = parallel_search(self.standard_config)
-        result = df_result["BBs"].tolist()
-        scores = df_result["score"].tolist()
-        print(df_result)
-        self.assertListEqual(expected, result)
-        self.assertListEqual(expected_scores, scores)
-
-    def test_parallel_scaffold_search(self):
-        # expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
-        expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'],[],[],[],[]]
-        expected_scores = [1,0,0,0,0]
-        df_result = parallel_search(self.scaffold_config)
-        result = df_result["BBs"].tolist()
-        scores = df_result["score"].tolist()
-        print(df_result)
-        self.assertListEqual(expected, result)
-        self.assertListEqual(expected_scores, scores)
-
-
-    def test_sequential_scaffold_search(self):
-        expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'],[],[],[],[]]
-        expected_scores = [1,0,0,0,0]
-        df_result = sequential_search(self.scaffold_config)
-        result = df_result["BBs"].tolist()
-        scores = df_result["score"].tolist()
-        print(df_result)
-        self.assertListEqual(expected, result)
-        self.assertListEqual(expected_scores, scores)
-
-
-    def test_sequential_standard_search(self):
-        expected = [['Clc1ccccc1CBr', 'O=C1CC(O)C1', 'Nc1n[nH]c2cc(Br)ccc12', 'OB(O)c1ccccc1'], [], [],
-                    ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
-        expected_scores = [1.0, 0.9375, 0.875, 1.0, 0.5]
-        df_result = sequential_search(self.standard_config)
+    def test_iterative_scaffold_deepening_search(self):
+        expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], [], []]
+        expected_scores = [1, 0, 0, 0, 0]
+        df_result = parallel_constrained_breadth_first_search(self.scaffold_config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
         print(df_result)
@@ -93,17 +54,7 @@ class TestExecutionModes(unittest.TestCase):
         expected = [['Clc1ccccc1CBr', 'O=C1CC(O)C1', 'Nc1n[nH]c2cc(Br)ccc12', 'OB(O)c1ccccc1'], [], [],
                     ['O=Cc1cccc(CO)n1', 'CC(C)(C)Cl', 'NNc1ncnc2sccc12'], []]
         expected_scores = [1.0, 0.9375, 0.875, 1.0, 0.5]
-        df_result = parallel_iterative_deepening_search(self.standard_config)
-        result = df_result["BBs"].tolist()
-        scores = df_result["score"].tolist()
-        print(df_result)
-        self.assertListEqual(expected, result)
-        self.assertListEqual(expected_scores, scores)
-
-    def test_iterative_scaffold_deepening_search(self):
-        expected = [['Clc1n[nH]c2cc(-c3ccccc3)ccc12', 'Clc1ccccc1CBr', 'NC1CC(O)C1'], [], [], [], []]
-        expected_scores = [1, 0, 0, 0, 0]
-        df_result = parallel_iterative_deepening_search(self.scaffold_config)
+        df_result = parallel_constrained_breadth_first_search(self.standard_config)
         result = df_result["BBs"].tolist()
         scores = df_result["score"].tolist()
         print(df_result)

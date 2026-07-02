@@ -50,28 +50,11 @@ class BaseTreeSearch(abc.ABC):
 
     def req_search_tree(self, mol: TreeMolecule, depth: int, start_time, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
         self._check_time_limit(start_time)
-        # Returns (score, resolved). ``score`` is the soft recursive feasibility
-        # average, kept as a ranking signal; ``resolved`` is True only when every
-        # leaf of the chosen route is in stock. A route is committed to self.solved
-        # and the search stops expanding this node ONLY when it is fully resolved —
-        # a route that bottoms out on a non-stock leaf is not a real synthesis.
-        # Because resolved implies score == 1.0 by induction, the first resolved
-        # action is optimal, so we return on it.
-        #
-        # The cache is keyed by inchi_key and stores the remaining BUDGET
-        # ``K = max_depth - depth`` at which a verdict was computed, NOT the
-        # absolute tree-depth. Resolvability is monotonic in budget, so reuse is
-        # budget-aware (see _can_reuse): a resolved=True at budget K_c holds at any
-        # K_now >= K_c; a resolved=False at K_c holds at any K_now <= K_c. This
-        # stays sound when max_depth changes between runs (iterative deepening).
 
-        # Cycle guard: a molecule that reappears on its own retrosynthetic path
-        # (e.g. an acid -> tert-butyl ester -> acid protect/deprotect loop) is a
-        # dead end, not a solution. Score it 0.0/unresolved and DO NOT cache it —
-        # this verdict is path-dependent while self.cache is keyed only by inchi_key.
-        if mol.inchi_key in ancestors:
+        if self._is_a_cyclic_deadlock(mol, ancestors):
             return 0.0, False
-        if depth > self._input_config.depth:
+
+        if self._depth_limit_is_exceeded(depth):
             return 0.0, False
 
         budget = self._input_config.depth - depth
@@ -115,6 +98,7 @@ class BaseTreeSearch(abc.ABC):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
                 self._update_cache(mol, budget, score, True)
                 return score, True
+
             if score > best_score:
                 best_score = score
 
@@ -122,13 +106,7 @@ class BaseTreeSearch(abc.ABC):
         return best_score, False
 
     def search_iterative(self, smiles: List[str]):
-        # Iterative-deepening DFS: per target, sweep max_depth from d_start up to
-        # d_max on ONE warm instance and stop at the first resolved depth. Reuses
-        # the mode-specific reconstruction by calling self.search([smi]) at each
-        # depth; self.cache/self.solved persist across iterations, so deeper passes
-        # reuse resolved subtrees and re-explore only the unresolved frontier (sound
-        # because the cache is budget-keyed). An unresolved deepening step costs only
-        # a warm req_search_tree — best_route runs only once a depth resolves.
+        #breadth first search for a given
         rows = []
         for smi in smiles:
             resolved_depth = None
@@ -306,3 +284,15 @@ class BaseTreeSearch(abc.ABC):
         delta = time.time() - start_time
         if self.app_config.search.time_limit < delta:
             raise TimeoutError("Search exceeded the allocated time.")
+
+    def _is_a_cyclic_deadlock(self, mol: TreeMolecule, ancestors: frozenset):
+        # Cycle guard: a molecule that reappears on its own retrosynthetic path
+        # (e.g. an acid -> tert-butyl ester -> acid protect/deprotect loop) is a
+        # dead end, not a solution. Score it 0.0/unresolved and DO NOT cache it —
+        # this verdict is path-dependent while self.cache is keyed only by inchi_key.
+        if mol.inchi_key in ancestors:
+            return True
+        return False
+
+    def _depth_limit_is_exceeded(self, depth: int):
+        return depth > self._input_config.depth
