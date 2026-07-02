@@ -1,6 +1,7 @@
 """Tests for the in-memory branch cache populated during search."""
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import time
 
 import unittest
 from unittest.mock import MagicMock
@@ -18,7 +19,7 @@ class TestCacheCorrectness(unittest.TestCase):
         exp = _make_search(stock=stock)
 
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.req_search_tree(mol, depth=0)
+        exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertIn(mol.inchi_key, exp.cache)
 
     def test_budget_stored_correctly(self):
@@ -41,7 +42,7 @@ class TestCacheCorrectness(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        exp.req_search_tree(mol, depth=1)
+        exp.req_search_tree(mol, depth=1, start_time=time.time())
         budget, _, _ = exp.cache[mol.inchi_key]
         self.assertEqual(budget, 2)
 

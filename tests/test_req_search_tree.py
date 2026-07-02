@@ -1,5 +1,7 @@
 """Tests for BaseTreeSearch.req_search_tree."""
 import os
+import time
+
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import unittest
@@ -17,7 +19,7 @@ class TestReqSearchTree(unittest.TestCase):
         stock.__contains__ = MagicMock(return_value=True)
         exp = _make_search(stock=stock)
         mol = TreeMolecule(parent=None, smiles="CCO")
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertEqual(score, 1.0)
         self.assertTrue(resolved)
 
@@ -29,20 +31,20 @@ class TestReqSearchTree(unittest.TestCase):
         exp = _make_search(stock=stock)
         exp._input_config.depth = 5
         mol = TreeMolecule(parent=None, smiles="CCO")
-        exp.req_search_tree(mol, depth=0)
+        exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertIn(mol.inchi_key, exp.cache)
         self.assertEqual(exp.cache[mol.inchi_key], (0, 1.0, True))
         # Reused even at the deepest query (smallest budget); stock check would
         # also re-confirm, so flip stock off to prove the cache entry is used.
         stock.__contains__ = MagicMock(return_value=False)
-        score, resolved = exp.req_search_tree(mol, depth=5)
+        score, resolved = exp.req_search_tree(mol, depth=5, start_time=time.time())
         self.assertEqual((score, resolved), (1.0, True))
 
     def test_depth_exceeds_max_returns_0(self):
         exp = _make_search()
         exp._input_config.depth = 2
         mol = TreeMolecule(parent=None, smiles="CCO")
-        score, resolved = exp.req_search_tree(mol, depth=3)
+        score, resolved = exp.req_search_tree(mol, depth=3, start_time=time.time())
         self.assertEqual(score, 0.0)
         self.assertFalse(resolved)
 
@@ -53,7 +55,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.cache[mol.inchi_key] = (2, 1.0, True)
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertEqual((score, resolved), (1.0, True))
 
     def test_resolved_recomputed_when_budget_now_lt_cached(self):
@@ -66,7 +68,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.cache[mol.inchi_key] = (4, 0.7, True)
-        score, resolved = exp.req_search_tree(mol, depth=3)
+        score, resolved = exp.req_search_tree(mol, depth=3, start_time=time.time())
         self.assertEqual((score, resolved), (1.0, True))
 
     def test_unresolved_reused_when_budget_now_le_cached(self):
@@ -78,7 +80,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.cache[mol.inchi_key] = (3, 0.5, False)
-        score, resolved = exp.req_search_tree(mol, depth=2)
+        score, resolved = exp.req_search_tree(mol, depth=2, start_time=time.time())
         self.assertEqual((score, resolved), (0.5, False))
 
     def test_unresolved_recomputed_when_budget_now_gt_cached(self):
@@ -91,7 +93,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp._input_config.depth = 4
         mol = TreeMolecule(parent=None, smiles="CCO")
         exp.cache[mol.inchi_key] = (1, 0.5, False)
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertEqual((score, resolved), (1.0, True))
 
     def test_mean_of_reactants_scoring(self):
@@ -107,7 +109,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertEqual(score, 1.0)
         self.assertTrue(resolved)
 
@@ -130,7 +132,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertTrue(resolved)
         self.assertIn(mol.inchi_key, exp.solved)
 
@@ -155,7 +157,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertFalse(resolved)
         self.assertNotIn(mol.inchi_key, exp.solved)
 
@@ -168,7 +170,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp = _make_search(stock=stock)
         exp._input_config.depth = 5
 
-        score, resolved = exp.req_search_tree(mol, depth=0, ancestors=frozenset({mol.inchi_key}))
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time(), ancestors=frozenset({mol.inchi_key}))
         self.assertEqual(score, 0.0)
         self.assertFalse(resolved)
         self.assertNotIn(mol.inchi_key, exp.cache)
@@ -191,7 +193,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp.filter_policy.__getitem__ = MagicMock(return_value=mock_filter)
         exp.filter_policy.selection = {"test_filter": True}
 
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertEqual(score, 0.0)
         self.assertFalse(resolved)
 
@@ -208,7 +210,7 @@ class TestReqSearchTree(unittest.TestCase):
         exp.expansion_policy.get_actions = MagicMock(return_value=([], []))
         exp.rules_expansion.get_actions = MagicMock(return_value=[action])
 
-        score, resolved = exp.req_search_tree(mol, depth=0)
+        score, resolved = exp.req_search_tree(mol, depth=0, start_time=time.time())
         self.assertGreater(score, 0.9)
         self.assertTrue(resolved)
 

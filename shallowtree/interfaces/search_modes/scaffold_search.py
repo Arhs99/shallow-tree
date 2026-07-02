@@ -187,7 +187,7 @@ class ScaffoldSearch(BaseTreeSearch):
             # from both scoring and resolution (it carries the context scaffold, not a
             # stock building block). "Resolved" therefore means every OTHER reactant
             # bottoms out in stock.
-            child_results = [self.req_search_tree(x, 1, frozenset({mol.inchi_key}), start_time=start_time) for x in reactants if x != chosen]
+            child_results = [self.req_search_tree(x, 1, start_time=start_time, ancestors=frozenset({mol.inchi_key})) for x in reactants if x != chosen]
             score = sum(s for s, _ in child_results) / (len(reactants) - 1)
             if all(g for _, g in child_results):
                 # Last resolved disconnection wins (preserves the pre-existing

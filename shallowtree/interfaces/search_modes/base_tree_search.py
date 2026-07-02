@@ -48,12 +48,8 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset(), start_time=None) -> Tuple[float, bool]:
-        if start_time is None:
-            start_time = time.time()
-        delta = time.time() - start_time
-        if self.app_config.search.time_limit < delta:
-            raise TimeoutError("Search exceeded the allocated time.")
+    def req_search_tree(self, mol: TreeMolecule, depth: int, start_time, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+        self._check_time_limit(start_time)
         # Returns (score, resolved). ``score`` is the soft recursive feasibility
         # average, kept as a ranking signal; ``resolved`` is True only when every
         # leaf of the chosen route is in stock. A route is committed to self.solved
@@ -113,7 +109,7 @@ class BaseTreeSearch(abc.ABC):
         best_score = 0.0
         for action in feasible_actions:
             reactants = action.reactants[0]
-            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}, start_time) for x in reactants]
+            child_results = [self.req_search_tree(x, depth + 1, start_time, ancestors | {mol.inchi_key}) for x in reactants]
             score = sum(s for s, _ in child_results) / len(reactants)
             if all(resolved for _, resolved in child_results):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
@@ -174,7 +170,6 @@ class BaseTreeSearch(abc.ABC):
     @abstractmethod
     def best_route(self, *args, **kwargs):
         pass
-
 
     def _determine_rules_and_actions(self, mol: TreeMolecule):
         expansion_policy, _ = self.expansion_policy.get_actions([mol])
@@ -306,3 +301,8 @@ class BaseTreeSearch(abc.ABC):
             else Path(__file__).parents[2] / 'rules' / 'direct.csv'
 
         return TemplateRules(extra_template_path, self._intern_cache)
+
+    def _check_time_limit(self, start_time):
+        delta = time.time() - start_time
+        if self.app_config.search.time_limit < delta:
+            raise TimeoutError("Search exceeded the allocated time.")
