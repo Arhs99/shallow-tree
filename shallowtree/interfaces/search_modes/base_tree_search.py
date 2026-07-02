@@ -1,9 +1,11 @@
 import abc
 import hashlib
+import time
 from abc import abstractmethod
 from pathlib import Path
 from typing import List, Tuple
 
+import pandas as pd
 from rdkit.Chem.rdchem import Mol
 from shallowtree.configs.input_configuration import InputConfiguration
 
@@ -46,7 +48,8 @@ class BaseTreeSearch(abc.ABC):
         self.cache = dict()
         self.solved = dict()
 
-    def req_search_tree(self, mol: TreeMolecule, depth: int, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+    def req_search_tree(self, mol: TreeMolecule, depth: int, start_time, ancestors: frozenset = frozenset()) -> Tuple[float, bool]:
+        self._check_time_limit(start_time)
         # Returns (score, resolved). ``score`` is the soft recursive feasibility
         # average, kept as a ranking signal; ``resolved`` is True only when every
         # leaf of the chosen route is in stock. A route is committed to self.solved
@@ -54,6 +57,13 @@ class BaseTreeSearch(abc.ABC):
         # a route that bottoms out on a non-stock leaf is not a real synthesis.
         # Because resolved implies score == 1.0 by induction, the first resolved
         # action is optimal, so we return on it.
+        #
+        # The cache is keyed by inchi_key and stores the remaining BUDGET
+        # ``K = max_depth - depth`` at which a verdict was computed, NOT the
+        # absolute tree-depth. Resolvability is monotonic in budget, so reuse is
+        # budget-aware (see _can_reuse): a resolved=True at budget K_c holds at any
+        # K_now >= K_c; a resolved=False at K_c holds at any K_now <= K_c. This
+        # stays sound when max_depth changes between runs (iterative deepening).
 
         # Cycle guard: a molecule that reappears on its own retrosynthetic path
         # (e.g. an acid -> tert-butyl ester -> acid protect/deprotect loop) is a
@@ -64,12 +74,17 @@ class BaseTreeSearch(abc.ABC):
         if depth > self._input_config.depth:
             return 0.0, False
 
+        budget = self._input_config.depth - depth
+
         if mol.inchi_key in self.cache:
-            cdepth, cscore, cresolved = self.cache[mol.inchi_key]
-            if cdepth <= depth:
+            cbudget, cscore, cresolved = self.cache[mol.inchi_key]
+            if self._can_reuse(cbudget, cresolved, budget):
                 return cscore, cresolved
 
         if mol in self.stock:
+            # Budget 0 + resolved=True: the True reuse rule (budget_now >= 0, always
+            # true here since depth <= max_depth) makes a stock leaf reusable at any
+            # budget. The stored tuple is byte-identical to the old depth-keyed one.
             self.cache[mol.inchi_key] = (0, 1.0, True)
             return 1.0, True
 
@@ -77,8 +92,8 @@ class BaseTreeSearch(abc.ABC):
         if self.redis_cache and mol.inchi_key not in self.cache:
             dto = self.redis_cache.get_cache(mol.inchi_key)
             if dto.exists:
-                self.cache[mol.inchi_key] = (dto.depth, dto.score, dto.resolved)  # Populate local cache
-                if dto.depth <= depth:
+                self.cache[mol.inchi_key] = (dto.budget, dto.score, dto.resolved)  # Populate local cache
+                if self._can_reuse(dto.budget, dto.resolved, budget):
                     # Only a resolved result has a persisted route to load
                     if dto.resolved:
                         solved_dto = self.redis_cache.get_solved(mol.inchi_key)
@@ -94,26 +109,67 @@ class BaseTreeSearch(abc.ABC):
         best_score = 0.0
         for action in feasible_actions:
             reactants = action.reactants[0]
-            child_results = [self.req_search_tree(x, depth + 1, ancestors | {mol.inchi_key}) for x in reactants]
+            child_results = [self.req_search_tree(x, depth + 1, start_time, ancestors | {mol.inchi_key}) for x in reactants]
             score = sum(s for s, _ in child_results) / len(reactants)
             if all(resolved for _, resolved in child_results):
                 self.solved[mol.inchi_key] = (reactants, score, action.metadata['classification'])
-                self._update_cache(mol, depth, score, True)
+                self._update_cache(mol, budget, score, True)
                 return score, True
             if score > best_score:
                 best_score = score
 
-        self._update_cache(mol, depth, best_score, False)
+        self._update_cache(mol, budget, best_score, False)
         return best_score, False
 
+    def search_iterative(self, smiles: List[str]):
+        # Iterative-deepening DFS: per target, sweep max_depth from d_start up to
+        # d_max on ONE warm instance and stop at the first resolved depth. Reuses
+        # the mode-specific reconstruction by calling self.search([smi]) at each
+        # depth; self.cache/self.solved persist across iterations, so deeper passes
+        # reuse resolved subtrees and re-explore only the unresolved frontier (sound
+        # because the cache is budget-keyed). An unresolved deepening step costs only
+        # a warm req_search_tree — best_route runs only once a depth resolves.
+        rows = []
+        for smi in smiles:
+            resolved_depth = None
+            row = None
+            for d in range(self._input_config.d_start, self._input_config.d_max + 1):
+                self._input_config.depth = d
+                row = self.search([smi], clear=False).iloc[0].to_dict()
+                if row.get('resolved'):
+                    resolved_depth = d
+                    break
+            # row is None only if the depth range is empty (d_start > d_max).
+            if row is None:
+                continue
+            row['resolved_depth'] = resolved_depth
+            rows.append(row)
+            self.cache = {}
+            self.solved = {}
+        return pd.DataFrame(rows)
+
+    @staticmethod
+    def _can_reuse(cached_budget: int, cached_resolved: bool, budget_now: int) -> bool:
+        # Resolvability is monotonic in remaining budget. A proof that a route
+        # resolves within ``cached_budget`` steps holds for any larger budget; a
+        # proof that it does NOT resolve within ``cached_budget`` steps holds for
+        # any smaller budget. Recompute otherwise (a True needs a smaller-or-equal
+        # budget proof, a False a larger-or-equal one). With a single writer
+        # overwriting only ever tightens the entry; under CONCURRENT Redis writers
+        # (parallel IDDFS) last-write-wins can loosen it instead, costing a
+        # redundant recompute — never a wrong verdict, since each value read is
+        # individually sound under this rule.
+        if cached_resolved:
+            return budget_now >= cached_budget
+        return budget_now <= cached_budget
+
     @abstractmethod
-    def search(self, *args, **kwargs) -> List:
+    def search(self, *args, **kwargs) -> pd.DataFrame:
         pass
 
     @abstractmethod
     def best_route(self, *args, **kwargs):
         pass
-
 
     def _determine_rules_and_actions(self, mol: TreeMolecule):
         expansion_policy, _ = self.expansion_policy.get_actions([mol])
@@ -162,17 +218,17 @@ class BaseTreeSearch(abc.ABC):
     def _update(self, *args, **kwargs) -> List:
         pass
 
-    def _update_cache(self, mol: TreeMolecule, depth: int, score: float, resolved: bool):
-        self.cache[mol.inchi_key] = (depth, score, resolved)
+    def _update_cache(self, mol: TreeMolecule, budget: int, score: float, resolved: bool):
+        self.cache[mol.inchi_key] = (budget, score, resolved)
         if self.redis_cache:
-            self.redis_cache.set_cache(mol.inchi_key, depth, score, resolved)
+            self.redis_cache.set_cache(mol.inchi_key, budget, score, resolved)
 
     def _load_from_redis(self, root_mol: TreeMolecule) -> None:
         """Pre-populate local caches from Redis for the root molecule subtree."""
         if self.redis_cache:
             dto = self.redis_cache.get_cache(root_mol.inchi_key)
             if dto.exists:
-                self.cache[root_mol.inchi_key] = (dto.depth, dto.score, dto.resolved)
+                self.cache[root_mol.inchi_key] = (dto.budget, dto.score, dto.resolved)
                 # Only a resolved result has a persisted route to load
                 if dto.resolved:
                     solved_dto = self.redis_cache.get_solved(root_mol.inchi_key)
@@ -195,8 +251,8 @@ class BaseTreeSearch(abc.ABC):
             for inchi_key, (reactants, score, classification) in list(self.solved.items()):
                 self.redis_cache.set_solved(inchi_key, reactants, score, classification, start_time)
                 if inchi_key in self.cache:
-                    depth, cache_score, cache_resolved = self.cache[inchi_key]
-                    self.redis_cache.set_cache(inchi_key, depth, cache_score, cache_resolved)
+                    cache_budget, cache_score, cache_resolved = self.cache[inchi_key]
+                    self.redis_cache.set_cache(inchi_key, cache_budget, cache_score, cache_resolved)
 
     def _setup_redis_cache(self, cache_config: CacheConfiguration):
         if cache_config.enabled:
@@ -245,3 +301,8 @@ class BaseTreeSearch(abc.ABC):
             else Path(__file__).parents[2] / 'rules' / 'direct.csv'
 
         return TemplateRules(extra_template_path, self._intern_cache)
+
+    def _check_time_limit(self, start_time):
+        delta = time.time() - start_time
+        if self.app_config.search.time_limit < delta:
+            raise TimeoutError("Search exceeded the allocated time.")

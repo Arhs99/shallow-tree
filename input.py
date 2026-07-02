@@ -23,7 +23,12 @@ from typing import List
 from rdkit import Chem
 
 from shallowtree.configs.input_configuration import InputConfiguration
-from shallowtree.interfaces.execution_modes import parallel_search, sequential_search
+from shallowtree.interfaces.execution_modes import (
+    iterative_deepening_search,
+    parallel_iterative_deepening_search,
+    parallel_search,
+    sequential_search,
+)
 
 
 def read_json_file(path: str):
@@ -43,7 +48,12 @@ def main():
     config_dict = read_json_file(config_path)
     input_config = InputConfiguration(**config_dict)
 
-    if input_config.parallel_processes ==1:
+    if input_config.iterative_deepening:
+        if input_config.parallel_processes > 1:
+            df = parallel_iterative_deepening_search(input_config)
+        else:
+            df = iterative_deepening_search(input_config)
+    elif input_config.parallel_processes == 1:
         df = sequential_search(input_config)
     else:
         df = parallel_search(input_config)
